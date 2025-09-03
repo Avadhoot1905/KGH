@@ -47,9 +47,9 @@ export default function Home() {
       <section className="testimonials">
         <h2>CUSTOMER TESTIMONIALS</h2>
         <div className="testimonial-grid">
-          <div className="testimonial">"Outstanding experience!" - John Mikel</div>
-          <div className="testimonial">"High-end tactical gear." - Sarah Thompson</div>
-          <div className="testimonial">"Very satisfied!" - Mike Rodriguez</div>
+          <div className="testimonial">&quot;Outstanding experience!&quot; - John Mikel</div>
+          <div className="testimonial">&quot;High-end tactical gear.&quot; - Sarah Thompson</div>
+          <div className="testimonial">&quot;Very satisfied!&quot; - Mike Rodriguez</div>
         </div>
       </section>
 

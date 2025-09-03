@@ -14,7 +14,7 @@ export default function Footer() {
         </div>
         <div>
           <h4>CONTACT</h4>
-          <p>"address"<br />"email</p>
+          <p>&quot;address&quot;<br />&quot;email&quot;</p>
         </div>
       </div>
     </footer>

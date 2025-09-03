@@ -5,7 +5,7 @@ import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
-const baseUrl = process.env.NEXTAUTH_URL!;
+// const baseUrl = process.env.NEXTAUTH_URL!;
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -19,7 +19,7 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async redirect({ url, baseUrl }) {
+    async redirect({ baseUrl }) {
       return `${baseUrl}`;
     },
   },

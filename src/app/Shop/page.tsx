@@ -2,7 +2,8 @@ import React from "react";
 import "./shop.css";
 import Navbar from "../components1/Navbar";
 import Footer from "../components1/Footer";
-import { getFilteredProducts } from "@/actions/products";
+import Filters from "./Filters";
+import { getProducts, getFilterOptions, type ProductListItem } from "@/actions/products";
 
 function formatINR(amount: number) {
   try {
@@ -16,59 +17,40 @@ function formatINR(amount: number) {
   }
 }
 
-export default async function Page() {
-  const products = await getFilteredProducts();
+export default async function Page({ searchParams }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
+  const sp = await searchParams;
+  const brandsParam = typeof sp.brands === "string" ? sp.brands : Array.isArray(sp.brands) ? sp.brands.join(",") : "";
+  const typesParam = typeof sp.types === "string" ? sp.types : Array.isArray(sp.types) ? sp.types.join(",") : "";
+  const minParam = typeof sp.min === "string" ? sp.min : undefined;
+  const maxParam = typeof sp.max === "string" ? sp.max : undefined;
+  const sortParam = typeof sp.sort === "string" ? sp.sort : undefined;
+
+  const filters = {
+    brandIds: brandsParam ? brandsParam.split(",").filter(Boolean) : undefined,
+    typeIds: typesParam ? typesParam.split(",").filter(Boolean) : undefined,
+    minPrice: minParam ? Number(minParam) : undefined,
+    maxPrice: maxParam ? Number(maxParam) : undefined,
+    sort: sortParam === "PRICE_ASC" || sortParam === "PRICE_DESC" ? sortParam : undefined,
+  } as const;
+
+  const [{ items: products }, { brands, types }] = await Promise.all([
+    getProducts({ filters, page: 1, pageSize: 24 }),
+    getFilterOptions(),
+  ]);
 
   return (
     <div>
       <Navbar/>
       <div className="shop-page">
         {/* Sidebar */}
-        <aside className="sidebar">
-          <h3>FILTERS</h3>
-
-          <div className="filter-group">
-            <strong>Brand</strong>
-            <label>
-              <input type="checkbox" /> Glock
-            </label>
-            <label>
-              <input type="checkbox" /> Smith & Wesson
-            </label>
-            <label>
-              <input type="checkbox" /> Sig Sauer
-            </label>
-          </div>
-
-          <div className="filter-group">
-            <strong>Type</strong>
-            <button className="pill">Pistol</button>
-            <button className="pill">Rifle</button>
-            <button className="pill">Shotgun</button>
-          </div>
-
-          <div className="filter-group">
-            <strong>Price Range</strong>
-            <input type="text" placeholder="Min" />
-            <input type="text" placeholder="Max" />
-          </div>
-
-          <div className="filter-group">
-            <strong>Sort By</strong>
-            <select>
-              <option>Relevance</option>
-              <option>Price: Low to High</option>
-              <option>Price: High to Low</option>
-            </select>
-          </div>
-        </aside>
+        <Filters brands={brands} types={types} />
 
         {/* Content */}
         <main className="content">
           <h2>FIREARMS COLLECTION</h2>
 
           <div className="product-grid">
-            {products.map((product) => {
+            {products.map((product: ProductListItem) => {
               const primaryPhoto = product.photos.find((p) => p.isPrimary) ?? product.photos[0];
               const subtitle = `${product.caliber.name}, ${product.type.name}`;
               return (

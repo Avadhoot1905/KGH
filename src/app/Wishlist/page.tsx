@@ -21,7 +21,7 @@ interface Recommendation {
 }
 
 export default function WishlistPage() {
-  const [wishlist, setWishlist] = useState<WishlistItem[]>([
+  const [wishlist] = useState<WishlistItem[]>([
     {
       id: 1,
       name: "Glock 17 Gen 5 - 9mm",

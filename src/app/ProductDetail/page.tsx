@@ -51,10 +51,10 @@ export default function ProductDetailPage() {
                   <strong>Capacity:</strong> 15+1 rounds
                 </li>
                 <li>
-                  <strong>Barrel Length:</strong> 4.02"
+                  <strong>Barrel Length:</strong> 4.02&quot;
                 </li>
                 <li>
-                  <strong>Overall Length:</strong> 7.28"
+                  <strong>Overall Length:</strong> 7.28&quot;
                 </li>
                 <li>
                   <strong>Weight:</strong> 23.63 oz

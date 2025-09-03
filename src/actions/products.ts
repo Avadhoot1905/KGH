@@ -1,10 +1,9 @@
 "use server";
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { PrismaClient, Prisma, ProductTag } from "@prisma/client";
 
 let prisma: PrismaClient;
 declare global {
-  // eslint-disable-next-line no-var
   var __PRISMA__: PrismaClient | undefined;
 }
 
@@ -42,7 +41,7 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
-  tag?: "NEW" | "TOP_SELLER";
+  tag?: ProductTag;
   sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC";
 };
 
@@ -92,7 +91,7 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefi
     };
   }
   if (filters.tag) {
-    where.tag = filters.tag as any;
+    where.tag = filters.tag as ProductTag;
   }
   if (filters.search && filters.search.trim().length > 0) {
     const q = filters.search.trim();
@@ -159,6 +158,14 @@ export async function getAllProducts(): Promise<ProductListItem[]> {
 export async function getFilteredProducts(filters?: ProductFilters): Promise<ProductListItem[]> {
   const result = await getProducts({ filters, page: 1, pageSize: 50 });
   return result.items;
+}
+
+export async function getFilterOptions() {
+  const [brands, types] = await Promise.all([
+    prisma.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    prisma.type.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+  ]);
+  return { brands, types };
 }
 
 
