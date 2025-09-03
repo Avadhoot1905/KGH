@@ -4,6 +4,7 @@ import Navbar from "../components1/Navbar";
 import Footer from "../components1/Footer";
 import Filters from "./Filters";
 import { getProducts, getFilterOptions, type ProductListItem } from "@/actions/products";
+import Link from "next/link";
 
 function formatINR(amount: number) {
   try {
@@ -54,7 +55,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
               const primaryPhoto = product.photos.find((p) => p.isPrimary) ?? product.photos[0];
               const subtitle = `${product.caliber.name}, ${product.type.name}`;
               return (
-                <div key={product.id} className="product-card">
+                <Link href={`/ProductDetail/${product.id}`} key={product.id} className="product-card">
                   {product.tag && (
                     <span className={`tag ${product.tag === "NEW" ? "new" : "top"}`}>
                       {product.tag}
@@ -69,7 +70,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                   <p>{subtitle}</p>
                   <h3>{formatINR(product.price)}</h3>
                   <button className="add-to-cart">ADD TO CART</button>
-                </div>
+                </Link>
               );
             })}
           </div>

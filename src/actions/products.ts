@@ -24,6 +24,9 @@ export type ProductListItem = {
   quantity: number;
   licenseRequired: boolean;
   tag: string | null;
+  averageRating?: number | null;
+  totalRating?: number | null;
+  totalReviews?: number | null;
   createdAt: Date;
   updatedAt: Date;
   brand: { id: string; name: string };
@@ -166,6 +169,15 @@ export async function getFilterOptions() {
     prisma.type.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
   return { brands, types };
+}
+
+export async function getProductById(productId: string): Promise<ProductListItem | null> {
+  if (!productId) return null;
+  const product = await prisma.product.findUnique({
+    where: { id: productId },
+    include: baseInclude,
+  });
+  return (product as unknown as ProductListItem) ?? null;
 }
 
 
