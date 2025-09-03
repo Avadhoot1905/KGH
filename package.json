@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "prisma db push && npx tsx prisma/seed.ts"
   },
   "dependencies": {
     "@next-auth/mongodb-adapter": "^1.1.3",
