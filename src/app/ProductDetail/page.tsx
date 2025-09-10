@@ -2,6 +2,9 @@ import React from "react";
 import "./PD.css";
 import Navbar from "../components1/Navbar";
 import Footer from "../components1/Footer";
+import AddToCartButton from "../components1/AddToCartButton";
+import WishlistButton from "../components1/WishlistButton";
+import ShareButton from "../components1/ShareButton";
 import { getProductById } from "@/actions/products";
 
 function formatINR(amount: number) {
@@ -76,9 +79,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
 
             <div className="buttons">
-              <button className="red">ADD TO CART</button>
-              <button className="outline">❤️ Wishlist</button>
-              <button className="outline">🔗 Share</button>
+              <AddToCartButton productId={product.id} />
+              <WishlistButton productId={product.id} />
+              <ShareButton title={product.name} url={`https://example.com/product/${product.id}`} />
             </div>
 
             <div className="warning-box">
