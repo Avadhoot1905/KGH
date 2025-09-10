@@ -84,4 +84,61 @@ export async function getMyWishlistItems(): Promise<WishlistListItem[]> {
   });
 }
 
+export async function removeFromMyWishlist(productId: string) {
+  if (!productId) throw new Error("productId is required");
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+  await prisma.wishlist.deleteMany({ where: { userId: user.id, productId } });
+  return { removed: true } as const;
+}
+
+export async function moveWishlistItemToCart(productId: string) {
+  if (!productId) throw new Error("productId is required");
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  await prisma.$transaction(async (tx) => {
+    await tx.wishlist.deleteMany({ where: { userId: user.id, productId } });
+    const existing = await tx.cart.findFirst({ where: { userId: user.id, productId } });
+    if (existing) {
+      await tx.cart.update({ where: { id: existing.id }, data: { quantity: existing.quantity + 1 } });
+    } else {
+      await tx.cart.create({ data: { userId: user.id, productId, quantity: 1 } });
+    }
+  });
+  return { moved: true } as const;
+}
+
+export async function moveAllWishlistToCart() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  const result = await prisma.$transaction(async (tx) => {
+    const entries = await tx.wishlist.findMany({ where: { userId: user.id } });
+    if (entries.length === 0) return { moved: 0 } as const;
+
+    for (const entry of entries) {
+      const existing = await tx.cart.findFirst({ where: { userId: user.id, productId: entry.productId } });
+      if (existing) {
+        await tx.cart.update({ where: { id: existing.id }, data: { quantity: existing.quantity + 1 } });
+      } else {
+        await tx.cart.create({ data: { userId: user.id, productId: entry.productId, quantity: 1 } });
+      }
+    }
+    await tx.wishlist.deleteMany({ where: { userId: user.id } });
+    return { moved: entries.length } as const;
+  });
+
+  return result;
+}
+
 

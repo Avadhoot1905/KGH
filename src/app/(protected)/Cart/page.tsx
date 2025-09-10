@@ -5,7 +5,7 @@ import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
 import { useEffect, useMemo, useState } from 'react';
-import { getMyCartItems } from '@/actions/cart';
+import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
 
 interface CartItem {
   id: string | number;
@@ -65,9 +65,24 @@ export default function Cart() {
 
                   <div className="cart-item-actions">
                     <div className="quantity-controls">
-                      <button>-</button>
+                      <button
+                        onClick={async () => {
+                          const res = await updateCartItemQuantity(String(item.id), -1);
+                          setCartItems((prev) => {
+                            const next = prev.map((p) =>
+                              p.id === item.id ? { ...p, quantity: Math.max(0, p.quantity - 1) } : p
+                            ).filter((p) => p.quantity > 0);
+                            return next;
+                          });
+                        }}
+                      >-</button>
                       <span>{item.quantity}</span>
-                      <button>+</button>
+                      <button
+                        onClick={async () => {
+                          const res = await updateCartItemQuantity(String(item.id), 1);
+                          setCartItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, quantity: p.quantity + 1 } : p)));
+                        }}
+                      >+</button>
                     </div>
                     <div className="cart-item-price">
                       <span className="price">${item.price.toFixed(2)}</span>
@@ -78,7 +93,13 @@ export default function Cart() {
                   </div>
                 </div>
 
-                <FaTrash className="delete-icon" />
+                <FaTrash
+                  className="delete-icon"
+                  onClick={async () => {
+                    await removeCartItem(String(item.id));
+                    setCartItems((prev) => prev.filter((p) => p.id !== item.id));
+                  }}
+                />
               </div>
             ))
             )}

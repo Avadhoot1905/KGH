@@ -3,7 +3,7 @@ import React, { useEffect, useState } from "react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import "./wishlist.css";
-import { getMyWishlistItems } from "@/actions/wishlist";
+import { getMyWishlistItems, moveWishlistItemToCart, removeFromMyWishlist, moveAllWishlistToCart } from "@/actions/wishlist";
 
 interface WishlistItem {
   id: number;
@@ -55,7 +55,15 @@ export default function WishlistPage() {
       <div className="wishlist-container">
         <div className="wishlist-header">
           <h2>Your Wishlist</h2>
-          <button className="btn-red">Move All to Cart</button>
+          <button
+            className="btn-red"
+            onClick={async () => {
+              await moveAllWishlistToCart();
+              setWishlist([]);
+            }}
+          >
+            Move All to Cart
+          </button>
         </div>
 
         <div className="wishlist-grid">
@@ -72,8 +80,24 @@ export default function WishlistPage() {
                 <p className="wishlist-license">🔒 License Required</p>
               )}
               <div className="wishlist-actions">
-                <button className="btn-red">Move to Cart</button>
-                <button className="btn-grey">Remove</button>
+                <button
+                  className="btn-red"
+                  onClick={async () => {
+                    await moveWishlistItemToCart(String(item.id));
+                    setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                  }}
+                >
+                  Move to Cart
+                </button>
+                <button
+                  className="btn-grey"
+                  onClick={async () => {
+                    await removeFromMyWishlist(String(item.id));
+                    setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                  }}
+                >
+                  Remove
+                </button>
               </div>
             </div>
           ))

@@ -95,4 +95,39 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
   });
 }
 
+export async function removeCartItem(cartItemId: string) {
+  if (!cartItemId) throw new Error("cartItemId is required");
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  await prisma.cart.deleteMany({ where: { id: cartItemId, userId: user.id } });
+  return { removed: true } as const;
+}
+
+export async function updateCartItemQuantity(cartItemId: string, delta: number) {
+  if (!cartItemId) throw new Error("cartItemId is required");
+  if (!delta) return { noop: true } as const;
+
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  const current = await prisma.cart.findFirst({ where: { id: cartItemId, userId: user.id } });
+  if (!current) throw new Error("CART_ITEM_NOT_FOUND");
+
+  const nextQty = (current.quantity || 0) + delta;
+  if (nextQty <= 0) {
+    await prisma.cart.delete({ where: { id: current.id } });
+    return { deleted: true } as const;
+  }
+
+  const updated = await prisma.cart.update({ where: { id: current.id }, data: { quantity: nextQty } });
+  return { quantity: updated.quantity } as const;
+}
+
 
