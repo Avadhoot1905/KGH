@@ -1,6 +1,6 @@
 import './cart.css';
-import Navbar from '../components1/Navbar';
-import Footer from '../components1/Footer';
+import Navbar from '@/app/components1/Navbar';
+import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
 
 interface CartItem {

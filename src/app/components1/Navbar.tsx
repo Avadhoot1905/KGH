@@ -38,7 +38,9 @@ export default function Navbar() {
           <span className="cart-count">2</span>
         </div>
 
-        <FaUser className="icon" title="Profile" />
+        <Link href="/profile">
+          <FaUser className="icon" title="Profile" />
+        </Link>
       </div>
     </header>
   );

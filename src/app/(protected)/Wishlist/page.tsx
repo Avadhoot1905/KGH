@@ -1,7 +1,7 @@
 "use client";
 import React, { useState } from "react";
-import Navbar from "../components1/Navbar";
-import Footer from "../components1/Footer";
+import Navbar from "@/app/components1/Navbar";
+import Footer from "@/app/components1/Footer";
 import "./wishlist.css";
 
 interface WishlistItem {
