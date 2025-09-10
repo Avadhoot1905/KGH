@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
+import { toggleWishlist as toggleWishlistAction } from "@/actions/wishlist";
 
 type WishlistButtonProps = {
   productId: string;
@@ -18,7 +19,7 @@ export default function WishlistButton({ productId, isWishlisted = false, classN
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const toggleWishlist = async () => {
+  const onToggleWishlist = async () => {
     if (saving) return;
     
     const auth = await getAuthState();
@@ -32,9 +33,8 @@ export default function WishlistButton({ productId, isWishlisted = false, classN
     }
     setSaving(true);
     try {
-      // Placeholder for server action to toggle wishlist
-      await new Promise((r) => setTimeout(r, 400));
-      setWishlisted((w) => !w);
+      const result = await toggleWishlistAction(productId);
+      setWishlisted(result.wishlisted);
     } finally {
       setSaving(false);
     }
@@ -42,7 +42,7 @@ export default function WishlistButton({ productId, isWishlisted = false, classN
 
   return (
     <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-      <button className={className} onClick={toggleWishlist} aria-pressed={wishlisted}>
+      <button className={className} onClick={onToggleWishlist} aria-pressed={wishlisted}>
         {saving ? "Saving..." : wishlisted ? "💖 Wishlisted" : "❤️ Wishlist"}
       </button>
       <Link href="/Wishlist" className="outline">View Wishlist</Link>

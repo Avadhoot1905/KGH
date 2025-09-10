@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
+import { addToCart } from "@/actions/cart";
 
 type AddToCartButtonProps = {
   productId: string;
@@ -32,8 +33,7 @@ export default function AddToCartButton({ productId, disabled, className = "red"
     }
     setAdding(true);
     try {
-      // Placeholder for server action to add to cart
-      await new Promise((r) => setTimeout(r, 500));
+      await addToCart(productId, 1);
       setAdded(true);
       setTimeout(() => setAdded(false), 1500);
     } finally {

@@ -1,10 +1,14 @@
+'use client';
+
 import './cart.css';
 import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
+import { useEffect, useMemo, useState } from 'react';
+import { getMyCartItems } from '@/actions/cart';
 
 interface CartItem {
-  id: number;
+  id: string | number;
   name: string;
   category: string;
   brand: string;
@@ -15,38 +19,25 @@ interface CartItem {
 }
 
 export default function Cart() {
-  const cartItems: CartItem[] = [
-    {
-      id: 1,
-      name: 'Premium Wireless Headphones',
-      category: 'Audio',
-      brand: 'Sony',
-      price: 299.99,
-      oldPrice: 399.99,
-      quantity: 2,
-      image: '/images/headphones.jpg',
-    },
-    {
-      id: 2,
-      name: 'Gaming Mechanical Keyboard',
-      category: 'Gaming',
-      brand: 'Razer',
-      price: 149.99,
-      quantity: 1,
-      image: '/images/keyboard.jpg',
-    },
-    {
-      id: 3,
-      name: 'Protective Phone Case',
-      category: 'Accessories',
-      brand: 'Apple',
-      price: 49.99,
-      quantity: 3,
-      image: '/images/phonecase.jpg',
-    },
-  ];
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [loading, setLoading] = useState(true);
 
-  const subtotal = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await getMyCartItems();
+        if (mounted) setCartItems(items as unknown as CartItem[]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
   const shipping = 9.99;
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
@@ -61,7 +52,10 @@ export default function Cart() {
         <div className="cart-content">
           {/* Left side - Cart Items */}
           <div className="cart-items">
-            {cartItems.map((item) => (
+            {loading && cartItems.length === 0 ? (
+              <></>
+            ) : (
+            cartItems.map((item) => (
               <div key={item.id} className="cart-item">
                 <img src={item.image} alt={item.name} className="cart-item-img" />
 
@@ -86,7 +80,8 @@ export default function Cart() {
 
                 <FaTrash className="delete-icon" />
               </div>
-            ))}
+            ))
+            )}
           </div>
 
           {/* Right side - Summary */}

@@ -1,8 +1,9 @@
 "use client";
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import "./wishlist.css";
+import { getMyWishlistItems } from "@/actions/wishlist";
 
 interface WishlistItem {
   id: number;
@@ -21,46 +22,23 @@ interface Recommendation {
 }
 
 export default function WishlistPage() {
-  const [wishlist] = useState<WishlistItem[]>([
-    {
-      id: 1,
-      name: "Glock 17 Gen 5 - 9mm",
-      price: "₹85,000",
-      tag: "NEW",
-      license: true,
-      img: "/guns/glock17.jpg",
-    },
-    {
-      id: 2,
-      name: "AR-15 Tactical Rifle",
-      price: "₹1,25,000",
-      tag: "TOP SELLER",
-      license: true,
-      img: "/guns/ar15.jpg",
-    },
-    {
-      id: 3,
-      name: "Tactical Bulletproof Vest",
-      price: "₹45,000",
-      license: false,
-      img: "/accessories/vest.jpg",
-    },
-    {
-      id: 4,
-      name: "Tactical Rifle Scope 4×32",
-      price: "₹15,000",
-      license: true,
-      img: "/accessories/scope.jpg",
-    },
-    {
-      id: 5,
-      name: "9mm Ammunition (50 Rounds)",
-      price: "₹2,500",
-      tag: "LIMITED",
-      license: true,
-      img: "/ammo/9mm.jpg",
-    },
-  ]);
+  const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const items = await getMyWishlistItems();
+        if (mounted) setWishlist(items as unknown as WishlistItem[]);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   const recommendations: Recommendation[] = [
     { id: 1, name: "Combat Knife", price: "₹7,500", img: "/recs/knife.jpg" },
@@ -81,7 +59,10 @@ export default function WishlistPage() {
         </div>
 
         <div className="wishlist-grid">
-          {wishlist.map((item) => (
+          {loading && wishlist.length === 0 ? (
+            <></>
+          ) : (
+          wishlist.map((item) => (
             <div key={item.id} className="wishlist-card">
               <img src={item.img} alt={item.name} className="wishlist-img" />
               {item.tag && <span className="wishlist-tag">{item.tag}</span>}
@@ -95,7 +76,8 @@ export default function WishlistPage() {
                 <button className="btn-grey">Remove</button>
               </div>
             </div>
-          ))}
+          ))
+          )}
         </div>
 
         <div className="recommendations">
