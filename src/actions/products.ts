@@ -188,6 +188,34 @@ export async function searchProductsBrute(query: string): Promise<ProductListIte
   return items;
 }
 
+// Lightweight search index for client Fuse.js
+export async function getSearchIndex() {
+  const products = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+      price: true,
+      brand: { select: { name: true } },
+      type: { select: { name: true } },
+      category: { select: { name: true } },
+      photos: { select: { url: true, isPrimary: true } },
+    },
+    orderBy: { createdAt: "desc" },
+    take: 500,
+  });
+  return products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    description: p.description,
+    price: p.price,
+    brandName: p.brand?.name ?? null,
+    typeName: p.type?.name ?? null,
+    categoryName: p.category?.name ?? null,
+    photoUrl: (p.photos.find(ph => ph.isPrimary) ?? p.photos[0])?.url ?? null,
+  }));
+}
+
 // Server action to update a product (admin-only)
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
@@ -275,6 +303,97 @@ export async function updateProductAction(
   }
 
   // Revalidate the admin products page
+  revalidatePath("/mod");
+}
+
+// Delete a product (admin-only)
+export async function deleteProductAction(productId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync with admin layout
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  if (!productId) {
+    throw new Error("Invalid product id");
+  }
+
+  await prisma.product.delete({ where: { id: productId } });
+  revalidatePath("/mod");
+}
+
+// Create a product (admin-only)
+export async function createProductAction(formData: FormData) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const name = (formData.get("name") as string | null)?.trim() || "";
+  const description = (formData.get("description") as string | null)?.trim() || "";
+  const priceStr = (formData.get("price") as string | null)?.trim() || "";
+  const quantityStr = (formData.get("quantity") as string | null)?.trim() || "";
+  const licenseRequiredStr = (formData.get("licenseRequired") as string | null) || null;
+  const tag = ((formData.get("tag") as string | null)?.trim() || "") || null;
+  const brandId = (formData.get("brandId") as string | null)?.trim() || "";
+  const typeId = (formData.get("typeId") as string | null)?.trim() || "";
+  const caliberId = (formData.get("caliberId") as string | null)?.trim() || "";
+  const categoryId = (formData.get("categoryId") as string | null)?.trim() || "";
+  const photoFile = formData.get("photo") as unknown as File | null;
+
+  if (!name || !description || !priceStr || !quantityStr || !brandId || !typeId || !caliberId || !categoryId) {
+    throw new Error("All fields except image are required");
+  }
+
+  const price = Number(priceStr);
+  const quantity = Number(quantityStr);
+  if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
+  if (!Number.isInteger(quantity) || quantity < 0) throw new Error("Invalid quantity");
+
+  const createData: Prisma.ProductCreateInput = {
+    name,
+    description,
+    price,
+    quantity,
+    licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
+    tag: tag ? (tag as any) : undefined,
+    brand: { connect: { id: brandId } },
+    type: { connect: { id: typeId } },
+    caliber: { connect: { id: caliberId } },
+    category: { connect: { id: categoryId } },
+  };
+
+  // Handle optional image upload
+  let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
+  if (photoFile && typeof photoFile === "object" && "arrayBuffer" in photoFile) {
+    const bytes = Buffer.from(await (photoFile as any).arrayBuffer());
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const safeName = `${Date.now()}_${((photoFile as any).name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+    const filePath = path.join(uploadsDir, safeName);
+    await fs.writeFile(filePath, bytes);
+    const publicUrl = `/uploads/${safeName}`;
+    photoToCreate = { url: publicUrl, alt: name, isPrimary: true };
+  }
+
+  if (photoToCreate) {
+    await prisma.product.create({
+      data: {
+        ...createData,
+        photos: { create: photoToCreate },
+      },
+    });
+  } else {
+    await prisma.product.create({ data: createData });
+  }
+
   revalidatePath("/mod");
 }
 

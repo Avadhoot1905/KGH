@@ -1,0 +1,104 @@
+"use client";
+
+import { useRef, useState, useEffect, FormEvent } from "react";
+import { createProductAction } from "@/actions/products";
+
+export default function AdminCreateProduct() {
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  function openDialog() {
+    setError(null);
+    dialogRef.current?.showModal();
+  }
+
+  async function onSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setPending(true);
+    setError(null);
+    const formData = new FormData(event.currentTarget);
+    try {
+      await createProductAction(formData);
+      dialogRef.current?.close();
+      (event.target as HTMLFormElement).reset();
+      // Optimistic: rely on page revalidation to refresh list
+    } catch (e: any) {
+      setError(e?.message || "Failed to create product");
+    } finally {
+      setPending(false);
+    }
+  }
+
+  return (
+    <>
+      <button onClick={openDialog} className="px-3 py-1.5 rounded bg-black text-white text-sm">Create +</button>
+      <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
+        <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">
+          <div className="flex items-start justify-between mb-4">
+            <h2 className="text-lg font-semibold">Create Product</h2>
+            <button type="button" onClick={() => dialogRef.current?.close()} className="text-gray-500">✕</button>
+          </div>
+
+          {error && <div className="mb-3 text-red-600 text-sm">{error}</div>}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="text-sm text-gray-600">Product Image (optional)</span>
+              <input name="photo" type="file" accept="image/*" className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Name</span>
+              <input name="name" required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Price</span>
+              <input name="price" type="number" step="0.01" min={0} required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="text-sm text-gray-600">Description</span>
+              <textarea name="description" required className="border rounded px-2 py-1.5 min-h-24" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Quantity</span>
+              <input name="quantity" type="number" min={0} required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex items-center gap-2 mt-6">
+              <input name="licenseRequired" type="checkbox" />
+              <span className="text-sm text-gray-700">License Required</span>
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Tag</span>
+              <input name="tag" className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Brand Id</span>
+              <input name="brandId" required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Type Id</span>
+              <input name="typeId" required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Caliber Id</span>
+              <input name="caliberId" required className="border rounded px-2 py-1.5" />
+            </label>
+            <label className="flex flex-col gap-1">
+              <span className="text-sm text-gray-600">Category Id</span>
+              <input name="categoryId" required className="border rounded px-2 py-1.5" />
+            </label>
+          </div>
+
+          <div className="flex items-center justify-end gap-2 mt-6">
+            <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border bg-white text-sm">Cancel</button>
+            <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-black text-white text-sm">
+              {pending ? "Creating..." : "Create"}
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
+  );
+}
+
+

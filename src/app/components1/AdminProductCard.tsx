@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useRef, useState, FormEvent, useEffect } from "react";
 import { ProductListItem } from "@/actions/products";
-import { updateProductAction } from "@/actions/products";
+import { updateProductAction, deleteProductAction } from "@/actions/products";
 import { useRouter } from "next/navigation";
 
 type AdminProductCardProps = {
@@ -17,6 +17,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
+  const deleteTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     return () => {
@@ -113,8 +115,78 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         >
           Edit
         </button>
-        <button className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50" disabled>Delete</button>
+        {deleteCountdown === null ? (
+          <button
+            className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50"
+            onClick={() => {
+              setError(null);
+              setDeleteCountdown(5);
+              deleteTimerRef.current && clearInterval(deleteTimerRef.current);
+              deleteTimerRef.current = setInterval(() => {
+                setDeleteCountdown((prev) => {
+                  if (prev === null) return null;
+                  const next = prev - 1;
+                  return next;
+                });
+              }, 1000);
+            }}
+          >
+            Delete
+          </button>
+        ) : (
+          <div className="flex items-center gap-2">
+            <button
+              className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700"
+              onClick={async () => {
+                if (deleteTimerRef.current) {
+                  clearInterval(deleteTimerRef.current);
+                  deleteTimerRef.current = null;
+                }
+                try {
+                  await deleteProductAction(product.id);
+                  setDeleteCountdown(null);
+                  router.refresh();
+                } catch (e: any) {
+                  setError(e?.message || "Failed to delete product");
+                  setDeleteCountdown(null);
+                }
+              }}
+            >
+              Confirm Delete
+            </button>
+            <button
+              className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50"
+              onClick={() => {
+                if (deleteTimerRef.current) {
+                  clearInterval(deleteTimerRef.current);
+                  deleteTimerRef.current = null;
+                }
+                setDeleteCountdown(null);
+              }}
+            >
+              Undo ({deleteCountdown ?? 0}s)
+            </button>
+          </div>
+        )}
       </div>
+
+      {deleteCountdown !== null && (
+        <CountdownEffect countdown={deleteCountdown} onExpired={async () => {
+          // Auto-confirm when countdown hits 0
+          if (deleteTimerRef.current) {
+            clearInterval(deleteTimerRef.current);
+            deleteTimerRef.current = null;
+          }
+          try {
+            await deleteProductAction(product.id);
+            setDeleteCountdown(null);
+            router.refresh();
+          } catch (e: any) {
+            setError(e?.message || "Failed to delete product");
+            setDeleteCountdown(null);
+          }
+        }} setCountdown={setDeleteCountdown} />
+      )}
 
       <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
         <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">
@@ -182,4 +254,19 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       </dialog>
     </div>
   );
+}
+
+function CountdownEffect({ countdown, onExpired, setCountdown }: { countdown: number; onExpired: () => void; setCountdown: (v: number | null) => void; }) {
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 0) {
+      onExpired();
+      return;
+    }
+    const t = setTimeout(() => {
+      setCountdown(countdown - 1);
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [countdown, onExpired, setCountdown]);
+  return null;
 }
