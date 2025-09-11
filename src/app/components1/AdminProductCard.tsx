@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, FormEvent } from "react";
+import { useRef, useState, FormEvent, useEffect } from "react";
 import { ProductListItem } from "@/actions/products";
 import { updateProductAction } from "@/actions/products";
 import { useRouter } from "next/navigation";
@@ -16,6 +16,29 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const router = useRouter();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+  }, [previewUrl]);
+
+  function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return url;
+      });
+    } else {
+      setPreviewUrl((prev) => {
+        if (prev) URL.revokeObjectURL(prev);
+        return null;
+      });
+    }
+  }
 
   async function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -37,7 +60,9 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     <div className="rounded-lg border border-gray-200 shadow-sm p-4 bg-white">
       <div className="flex gap-4">
         <div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 rounded overflow-hidden">
-          {primaryPhoto ? (
+          {previewUrl ? (
+            <Image src={previewUrl} alt={product.name} fill className="object-contain" />
+          ) : primaryPhoto ? (
             <Image
               src={primaryPhoto.url}
               alt={primaryPhoto.alt ?? product.name}
@@ -92,7 +117,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       </div>
 
       <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
-        <form onSubmit={onSubmit} className="p-6">
+        <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-lg font-semibold">Edit Product</h2>
             <button type="button" onClick={() => dialogRef.current?.close()} className="text-gray-500">✕</button>
@@ -101,6 +126,10 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
           {error && <div className="mb-3 text-red-600 text-sm">{error}</div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <label className="flex flex-col gap-1 md:col-span-2">
+              <span className="text-sm text-gray-600">Product Image</span>
+              <input name="photo" type="file" accept="image/*" onChange={onFileChange} className="border rounded px-2 py-1.5" />
+            </label>
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-600">Name</span>
               <input name="name" defaultValue={product.name} className="border rounded px-2 py-1.5" />
@@ -125,7 +154,6 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               <span className="text-sm text-gray-600">Tag</span>
               <input name="tag" defaultValue={product.tag ?? ""} className="border rounded px-2 py-1.5" />
             </label>
-            {/* For brand/type/caliber/category we use id inputs for now. Could be selects */}
             <label className="flex flex-col gap-1">
               <span className="text-sm text-gray-600">Brand Id</span>
               <input name="brandId" placeholder={product.brand?.name} className="border rounded px-2 py-1.5" />

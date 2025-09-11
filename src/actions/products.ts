@@ -192,6 +192,8 @@ export async function searchProductsBrute(query: string): Promise<ProductListIte
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { revalidatePath } from "next/cache";
+import fs from "fs/promises";
+import path from "path";
 
 export async function updateProductAction(
   productId: string,
@@ -222,6 +224,7 @@ export async function updateProductAction(
   const typeId = (formData.get("typeId") as string) ?? undefined;
   const caliberId = (formData.get("caliberId") as string) ?? undefined;
   const categoryId = (formData.get("categoryId") as string) ?? undefined;
+  const photoFile = formData.get("photo") as unknown as File | null;
 
   const data: Prisma.ProductUpdateInput = {};
   if (typeof name === "string") data.name = name;
@@ -236,11 +239,40 @@ export async function updateProductAction(
   if (caliberId) data.caliber = { connect: { id: caliberId } };
   if (categoryId) data.category = { connect: { id: categoryId } };
 
-  if (Object.keys(data).length === 0) {
+  // If a new photo is uploaded, save it under public/uploads and create a primary photo
+  let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
+  if (photoFile && typeof photoFile === "object" && "arrayBuffer" in photoFile) {
+    const bytes = Buffer.from(await photoFile.arrayBuffer());
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const safeName = `${Date.now()}_${(photoFile.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+    const filePath = path.join(uploadsDir, safeName);
+    await fs.writeFile(filePath, bytes);
+    const publicUrl = `/uploads/${safeName}`;
+    photoToCreate = { url: publicUrl, alt: data.name as string | undefined, isPrimary: true };
+  }
+
+  if (Object.keys(data).length === 0 && !photoToCreate) {
     throw new Error("No valid fields to update");
   }
 
-  await prisma.product.update({ where: { id: productId }, data });
+  if (photoToCreate) {
+    await prisma.product.update({
+      where: { id: productId },
+      data: {
+        ...data,
+        photos: {
+          updateMany: {
+            where: { isPrimary: true },
+            data: { isPrimary: false },
+          },
+          create: photoToCreate,
+        },
+      },
+    });
+  } else {
+    await prisma.product.update({ where: { id: productId }, data });
+  }
 
   // Revalidate the admin products page
   revalidatePath("/mod");
