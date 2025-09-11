@@ -31,6 +31,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
     typeIds: typesParam ? typesParam.split(",").filter(Boolean) : undefined,
     minPrice: minParam ? Number(minParam) : undefined,
     maxPrice: maxParam ? Number(maxParam) : undefined,
+    search: typeof sp.q === "string" ? sp.q : undefined,
     sort: sortParam === "PRICE_ASC" || sortParam === "PRICE_DESC" ? sortParam : undefined,
   } as const;
 

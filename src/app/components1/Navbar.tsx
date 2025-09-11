@@ -1,8 +1,13 @@
+"use client";
 import Link from 'next/link';
 import { FaSearch, FaShoppingCart, FaUser, FaHeart } from 'react-icons/fa';
 import './Navbar.css';
+import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 export default function Navbar() {
+  const router = useRouter();
+  const [query, setQuery] = useState('');
   return (
     <header className="navbar">
       {/* Logo */}
@@ -20,7 +25,22 @@ export default function Navbar() {
 
       {/* Icons */}
       <div className="nav-icons">
-        <FaSearch className="icon" title="Search" />
+        <input
+          placeholder="Search..."
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          style={{ padding: 6, borderRadius: 4, border: '1px solid #ccc' }}
+        />
+        <FaSearch
+          className="icon"
+          title="Search"
+          onClick={() => {
+            const q = query.trim();
+            if (!q) return;
+            const params = new URLSearchParams({ q });
+            router.push(`/Shop?${params.toString()}`);
+          }}
+        />
 
         {/* Wishlist Heart */}
         <div className="wishlist-icon">

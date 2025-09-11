@@ -180,4 +180,69 @@ export async function getProductById(productId: string): Promise<ProductListItem
   return (product as unknown as ProductListItem) ?? null;
 }
 
+// Brute-force search wrapper for Navbar
+export async function searchProductsBrute(query: string): Promise<ProductListItem[]> {
+  const q = (query || "").trim();
+  if (!q) return [];
+  const { items } = await getProducts({ filters: { search: q }, page: 1, pageSize: 50 });
+  return items;
+}
+
+// Server action to update a product (admin-only)
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/auth";
+import { revalidatePath } from "next/cache";
+
+export async function updateProductAction(
+  productId: string,
+  formData: FormData
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+
+  // Place allowed admin emails here (same as (admin)/layout.tsx)
+  // const allowedAdmins = [
+  //   "arcsmo19@gmail.com",
+  // ];
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync
+
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const name = (formData.get("name") as string) ?? undefined;
+  const description = (formData.get("description") as string) ?? undefined;
+  const priceStr = (formData.get("price") as string) ?? undefined;
+  const quantityStr = (formData.get("quantity") as string) ?? undefined;
+  const licenseRequiredStr = (formData.get("licenseRequired") as string) ?? undefined;
+  const tag = (formData.get("tag") as string) || null;
+  const brandId = (formData.get("brandId") as string) ?? undefined;
+  const typeId = (formData.get("typeId") as string) ?? undefined;
+  const caliberId = (formData.get("caliberId") as string) ?? undefined;
+  const categoryId = (formData.get("categoryId") as string) ?? undefined;
+
+  const data: Prisma.ProductUpdateInput = {};
+  if (typeof name === "string") data.name = name;
+  if (typeof description === "string") data.description = description;
+  if (typeof priceStr === "string" && priceStr.trim() !== "") data.price = Number(priceStr);
+  if (typeof quantityStr === "string" && quantityStr.trim() !== "") data.quantity = Number(quantityStr);
+  if (typeof licenseRequiredStr === "string") data.licenseRequired = licenseRequiredStr === "on" || licenseRequiredStr === "true";
+  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as any; else if (tag === "") data.tag = null;
+
+  if (brandId) data.brand = { connect: { id: brandId } };
+  if (typeId) data.type = { connect: { id: typeId } };
+  if (caliberId) data.caliber = { connect: { id: caliberId } };
+  if (categoryId) data.category = { connect: { id: categoryId } };
+
+  if (Object.keys(data).length === 0) {
+    throw new Error("No valid fields to update");
+  }
+
+  await prisma.product.update({ where: { id: productId }, data });
+
+  // Revalidate the admin products page
+  revalidatePath("/mod");
+}
 
