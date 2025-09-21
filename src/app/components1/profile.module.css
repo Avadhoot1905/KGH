@@ -1,0 +1,87 @@
+.container {
+  padding: 24px;
+}
+
+.profileCard {
+  background: #111;
+  color: #fff;
+  border: 1px solid #222;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.profileHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.avatarWrap { width: 64px; height: 64px; }
+.avatar { border-radius: 50%; object-fit: cover; }
+.avatarFallback {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background: #333;
+  color: #bbb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 20px;
+}
+
+.userMeta { flex: 1; }
+.userName { margin: 0; font-size: 20px; }
+.userEmail { margin: 2px 0; color: #bbb; font-size: 14px; }
+.userSince { margin: 0; color: #888; font-size: 12px; }
+
+.actions { display: flex; }
+
+.profileDetails {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 8px;
+}
+.profileDetails span { color: #aaa; margin-right: 6px; }
+
+.contentSection { }
+.sectionHeader { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.link { color: #61dafb; text-decoration: none; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.card { display: block; border: 1px solid #222; border-radius: 10px; overflow: hidden; color: inherit; text-decoration: none; background: #0b0b0b; }
+.cardImageWrap { aspect-ratio: 4/3; background: #141414; display: flex; align-items: center; justify-content: center; }
+.cardImage { width: 100%; height: 100%; object-fit: cover; }
+.cardBody { padding: 10px; }
+.cardTitle { font-size: 14px; margin-bottom: 4px; color: #eee; }
+.cardPrice { font-size: 13px; color: #bbb; }
+
+.orderList { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 10px; }
+.orderItem { display: flex; align-items: center; justify-content: space-between; border: 1px solid #222; border-radius: 10px; padding: 10px; background: #0b0b0b; }
+.orderMeta { color: #ccc; }
+.orderRight { display: flex; gap: 10px; align-items: center; color: #bbb; }
+.orderStatus { background: #1e1e1e; padding: 2px 8px; border-radius: 999px; font-size: 12px; }
+.orderTotal { font-weight: 600; }
+.orderItems { color: #888; }
+
+.emptyState { color: #888; border: 1px dashed #333; padding: 16px; border-radius: 8px; background: #0b0b0b; }
+
+.sectionPane { }
+.hidden { display: none; }
+
+/* Client toggle uses className switches; add a global helper in this module namespace */
+:global(.hiddenPane) { display: none; }
+:global(.profileToggle) { display: flex; gap: 8px; }
+:global(.btn) { padding: 8px 12px; border-radius: 8px; border: 1px solid #333; background: #0f0f0f; color: #eee; cursor: pointer; }
+:global(.btn.primary) { background: #e11d48; border-color: #e11d48; color: #fff; }
+:global(.btn.outline) { background: transparent; }
+
+
