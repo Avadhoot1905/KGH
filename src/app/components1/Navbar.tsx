@@ -11,14 +11,6 @@ export default function Navbar() {
         <div className="logo">KATHURIA GUN HOUSE</div>
       </Link>
 
-      {/* Links */}
-      <nav className="nav-links">
-        <Link href="#">HANDGUNS</Link>
-        <Link href="#">RIFLES</Link>
-        <Link href="#">AMMUNITION</Link>
-        <Link href="#">ACCESSORIES</Link>
-      </nav>
-
       {/* Icons + Search */}
       <div className="nav-icons" style={{ gap: 8 }}>
         <div style={{ minWidth: 280 }}>
