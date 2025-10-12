@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState, useEffect, FormEvent } from "react";
-import { createProductAction } from "@/actions/products";
+import { createProductAction, getAllProductsForSelector } from "@/actions/products";
+import RelatedProductsSelector from "./RelatedProductsSelector";
 
 type AdminCreateProductProps = {
   buttonClassName?: string;
@@ -11,9 +12,28 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
+  const [selectedRelatedIds, setSelectedRelatedIds] = useState<string[]>([]);
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  async function loadProducts() {
+    if (allProducts.length === 0 && !loadingProducts) {
+      setLoadingProducts(true);
+      try {
+        const products = await getAllProductsForSelector();
+        setAllProducts(products);
+      } catch (e) {
+        console.error("Failed to load products", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+  }
 
   function openDialog() {
     setError(null);
+    setSelectedRelatedIds([]);
+    loadProducts();
     dialogRef.current?.showModal();
   }
 
@@ -36,7 +56,7 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
 
   return (
     <>
-  <button onClick={openDialog} className={buttonClassName ?? "px-3 py-1.5 rounded bg-black text-white text-sm dark:bg-[#222] dark:text-white border border-gray-300 dark:border-[#333] hover:bg-gray-900 dark:hover:bg-[#333] transition-colors"}>Create +</button>
+      <button onClick={openDialog} className={buttonClassName ?? "px-3 py-1.5 rounded bg-black text-white text-sm dark:bg-[#222] dark:text-white border border-gray-300 dark:border-[#333] hover:bg-gray-900 dark:hover:bg-[#333] transition-colors"}>Create +</button>
       <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl dark:bg-[#222]">
         <form onSubmit={onSubmit} className="p-6 dark:bg-[#222]" encType="multipart/form-data">
           <div className="flex items-start justify-between mb-4">
@@ -91,6 +111,17 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
               <span className="text-sm text-gray-600 dark:text-gray-300">Category Id</span>
               <input name="categoryId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
+            <div className="md:col-span-2">
+              {loadingProducts ? (
+                <div className="text-sm text-gray-500 dark:text-gray-400">Loading products...</div>
+              ) : (
+                <RelatedProductsSelector
+                  products={allProducts}
+                  selectedIds={selectedRelatedIds}
+                  onChange={setSelectedRelatedIds}
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 mt-6">

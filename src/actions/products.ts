@@ -34,6 +34,7 @@ export type ProductListItem = {
   caliber: { id: string; name: string };
   category: { id: string; name: string };
   photos: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
+  relatedProducts?: { id: string; name: string }[];
 };
 
 export type ProductFilters = {
@@ -68,7 +69,8 @@ const baseInclude = {
   caliber: { select: { id: true, name: true } },
   category: { select: { id: true, name: true } },
   photos: { select: { id: true, url: true, alt: true, isPrimary: true } },
-} satisfies Prisma.ProductInclude;
+  relatedProducts: { select: { id: true, name: true } },
+} as const;
 
 function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefined {
   if (!filters) return undefined;
@@ -253,8 +255,9 @@ export async function updateProductAction(
   const caliberId = (formData.get("caliberId") as string) ?? undefined;
   const categoryId = (formData.get("categoryId") as string) ?? undefined;
   const photoFile = formData.get("photo") as unknown as File | null;
+  const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
-  const data: Prisma.ProductUpdateInput = {};
+  const data: any = {};
   if (typeof name === "string") data.name = name;
   if (typeof description === "string") data.description = description;
   if (typeof priceStr === "string" && priceStr.trim() !== "") data.price = Number(priceStr);
@@ -266,6 +269,14 @@ export async function updateProductAction(
   if (typeId) data.type = { connect: { id: typeId } };
   if (caliberId) data.caliber = { connect: { id: caliberId } };
   if (categoryId) data.category = { connect: { id: categoryId } };
+
+  // Handle related products
+  if (relatedProductIds !== undefined) {
+    const ids = relatedProductIds ? relatedProductIds.split(",").filter(Boolean) : [];
+    data.relatedProducts = {
+      set: ids.map(id => ({ id })),
+    };
+  }
 
   // If a new photo is uploaded, save it under public/uploads and create a primary photo
   let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
@@ -325,6 +336,30 @@ export async function deleteProductAction(productId: string) {
   revalidatePath("/mod");
 }
 
+// Get all products for selectors (admin-only)
+export async function getAllProductsForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const products = await prisma.product.findMany({
+    select: {
+      id: true,
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return products;
+}
+
 // Create a product (admin-only)
 export async function createProductAction(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -347,6 +382,7 @@ export async function createProductAction(formData: FormData) {
   const caliberId = (formData.get("caliberId") as string | null)?.trim() || "";
   const categoryId = (formData.get("categoryId") as string | null)?.trim() || "";
   const photoFile = formData.get("photo") as unknown as File | null;
+  const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
   if (!name || !description || !priceStr || !quantityStr || !brandId || !typeId || !caliberId || !categoryId) {
     throw new Error("All fields except image are required");
@@ -357,7 +393,7 @@ export async function createProductAction(formData: FormData) {
   if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
   if (!Number.isInteger(quantity) || quantity < 0) throw new Error("Invalid quantity");
 
-  const createData: Prisma.ProductCreateInput = {
+  const createData: any = {
     name,
     description,
     price,
@@ -369,6 +405,16 @@ export async function createProductAction(formData: FormData) {
     caliber: { connect: { id: caliberId } },
     category: { connect: { id: categoryId } },
   };
+
+  // Handle related products
+  if (relatedProductIds) {
+    const ids = relatedProductIds.split(",").filter(Boolean);
+    if (ids.length > 0) {
+      createData.relatedProducts = {
+        connect: ids.map(id => ({ id })),
+      };
+    }
+  }
 
   // Handle optional image upload
   let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
