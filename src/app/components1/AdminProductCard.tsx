@@ -17,8 +17,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
-  const deleteTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -59,9 +58,9 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 shadow-sm p-4 bg-white">
-      <div className="flex gap-4">
-        <div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 rounded overflow-hidden">
+    <div className="rounded-lg border border-gray-200 dark:border-[#333] shadow-lg p-6 bg-white dark:bg-[#222] transition-colors">
+      <div className="flex gap-6">
+        <div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-[#111] rounded-lg overflow-hidden">
           {previewUrl ? (
             <Image src={previewUrl} alt={product.name} fill className="object-contain" />
           ) : primaryPhoto ? (
@@ -72,35 +71,35 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               className="object-contain"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400 text-sm">No Image</div>
+            <div className="w-full h-full flex items-center justify-center text-gray-400 dark:text-gray-500 text-sm">No Image</div>
           )}
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-semibold text-lg truncate" title={product.name}>{product.name}</h3>
-            <span className="text-sm text-gray-500">{new Date(product.updatedAt).toLocaleDateString()}</span>
+            <h3 className="font-bold text-lg truncate text-black dark:text-white" title={product.name}>{product.name}</h3>
+            <span className="text-sm text-gray-500 dark:text-gray-400">{new Date(product.updatedAt).toLocaleDateString()}</span>
           </div>
-          <p className="text-sm text-gray-600 mt-1 line-clamp-2" title={product.description}>{product.description}</p>
+          <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2" title={product.description}>{product.description}</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm mt-3">
-            <div><span className="text-gray-500">Price:</span> ${product.price.toFixed(2)}</div>
-            <div><span className="text-gray-500">Qty:</span> {product.quantity}</div>
-            <div><span className="text-gray-500">License:</span> {product.licenseRequired ? "Required" : "No"}</div>
-            <div><span className="text-gray-500">Brand:</span> {product.brand?.name}</div>
-            <div><span className="text-gray-500">Type:</span> {product.type?.name}</div>
-            <div><span className="text-gray-500">Caliber:</span> {product.caliber?.name}</div>
-            <div><span className="text-gray-500">Category:</span> {product.category?.name}</div>
-            {product.tag && <div><span className="text-gray-500">Tag:</span> {product.tag}</div>}
+            <div><span className="text-gray-500 dark:text-gray-400">Price:</span> ${product.price.toFixed(2)}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Qty:</span> {product.quantity}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">License:</span> {product.licenseRequired ? "Required" : "No"}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Brand:</span> {product.brand?.name}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Type:</span> {product.type?.name}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Caliber:</span> {product.caliber?.name}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Category:</span> {product.category?.name}</div>
+            {product.tag && <div><span className="text-gray-500 dark:text-gray-400">Tag:</span> {product.tag}</div>}
             {typeof product.averageRating === "number" && (
-              <div><span className="text-gray-500">Avg Rating:</span> {product.averageRating?.toFixed(2)}</div>
+              <div><span className="text-gray-500 dark:text-gray-400">Avg Rating:</span> {product.averageRating?.toFixed(2)}</div>
             )}
             {typeof product.totalReviews === "number" && (
-              <div><span className="text-gray-500">Reviews:</span> {product.totalReviews}</div>
+              <div><span className="text-gray-500 dark:text-gray-400">Reviews:</span> {product.totalReviews}</div>
             )}
           </div>
           {product.photos.length > 1 && (
             <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
               {product.photos.slice(0, 8).map((photo) => (
-                <div key={photo.id} className="relative w-14 h-14 rounded bg-gray-50 overflow-hidden border">
+                <div key={photo.id} className="relative w-14 h-14 rounded bg-gray-50 dark:bg-[#111] overflow-hidden border dark:border-[#333]">
                   <Image src={photo.url} alt={photo.alt ?? "photo"} fill className="object-cover" />
                 </div>
               ))}
@@ -110,25 +109,17 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       </div>
       <div className="flex items-center justify-end gap-2 mt-4">
         <button
-          className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50"
+          className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
           onClick={() => dialogRef.current?.showModal()}
         >
           Edit
         </button>
-        {deleteCountdown === null ? (
+        {!showConfirmDelete ? (
           <button
-            className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50"
+            className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
             onClick={() => {
               setError(null);
-              setDeleteCountdown(5);
-              deleteTimerRef.current && clearInterval(deleteTimerRef.current);
-              deleteTimerRef.current = setInterval(() => {
-                setDeleteCountdown((prev) => {
-                  if (prev === null) return null;
-                  const next = prev - 1;
-                  return next;
-                });
-              }, 1000);
+              setShowConfirmDelete(true);
             }}
           >
             Delete
@@ -138,55 +129,29 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
             <button
               className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700"
               onClick={async () => {
-                if (deleteTimerRef.current) {
-                  clearInterval(deleteTimerRef.current);
-                  deleteTimerRef.current = null;
-                }
                 try {
                   await deleteProductAction(product.id);
-                  setDeleteCountdown(null);
+                  setShowConfirmDelete(false);
                   router.refresh();
                 } catch (e: any) {
                   setError(e?.message || "Failed to delete product");
-                  setDeleteCountdown(null);
+                  setShowConfirmDelete(false);
                 }
               }}
             >
               Confirm Delete
             </button>
             <button
-              className="px-3 py-1.5 rounded border text-sm bg-white hover:bg-gray-50"
-              onClick={() => {
-                if (deleteTimerRef.current) {
-                  clearInterval(deleteTimerRef.current);
-                  deleteTimerRef.current = null;
-                }
-                setDeleteCountdown(null);
-              }}
+              className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
+              onClick={() => setShowConfirmDelete(false)}
             >
-              Undo ({deleteCountdown ?? 0}s)
+              Cancel
             </button>
           </div>
         )}
       </div>
 
-      {deleteCountdown !== null && (
-        <CountdownEffect countdown={deleteCountdown} onExpired={async () => {
-          // Auto-confirm when countdown hits 0
-          if (deleteTimerRef.current) {
-            clearInterval(deleteTimerRef.current);
-            deleteTimerRef.current = null;
-          }
-          try {
-            await deleteProductAction(product.id);
-            setDeleteCountdown(null);
-            router.refresh();
-          } catch (e: any) {
-            setError(e?.message || "Failed to delete product");
-            setDeleteCountdown(null);
-          }
-        }} setCountdown={setDeleteCountdown} />
-      )}
+
 
       <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
         <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">

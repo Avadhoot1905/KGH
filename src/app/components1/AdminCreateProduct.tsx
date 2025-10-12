@@ -3,7 +3,11 @@
 import { useRef, useState, useEffect, FormEvent } from "react";
 import { createProductAction } from "@/actions/products";
 
-export default function AdminCreateProduct() {
+type AdminCreateProductProps = {
+  buttonClassName?: string;
+};
+
+export default function AdminCreateProduct({ buttonClassName }: AdminCreateProductProps) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,66 +36,66 @@ export default function AdminCreateProduct() {
 
   return (
     <>
-      <button onClick={openDialog} className="px-3 py-1.5 rounded bg-black text-white text-sm">Create +</button>
-      <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
-        <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">
+  <button onClick={openDialog} className={buttonClassName ?? "px-3 py-1.5 rounded bg-black text-white text-sm dark:bg-[#222] dark:text-white border border-gray-300 dark:border-[#333] hover:bg-gray-900 dark:hover:bg-[#333] transition-colors"}>Create +</button>
+      <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl dark:bg-[#222]">
+        <form onSubmit={onSubmit} className="p-6 dark:bg-[#222]" encType="multipart/form-data">
           <div className="flex items-start justify-between mb-4">
-            <h2 className="text-lg font-semibold">Create Product</h2>
-            <button type="button" onClick={() => dialogRef.current?.close()} className="text-gray-500">✕</button>
+            <h2 className="text-lg font-semibold text-black dark:text-white">Create Product</h2>
+            <button type="button" onClick={() => dialogRef.current?.close()} className="text-gray-500 dark:text-gray-400">✕</button>
           </div>
 
           {error && <div className="mb-3 text-red-600 text-sm">{error}</div>}
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <label className="flex flex-col gap-1 md:col-span-2">
-              <span className="text-sm text-gray-600">Product Image (optional)</span>
-              <input name="photo" type="file" accept="image/*" className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Product Image (optional)</span>
+              <input name="photo" type="file" accept="image/*" className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Name</span>
-              <input name="name" required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Name</span>
+              <input name="name" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Price</span>
-              <input name="price" type="number" step="0.01" min={0} required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Price</span>
+              <input name="price" type="number" step="0.01" min={0} required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1 md:col-span-2">
-              <span className="text-sm text-gray-600">Description</span>
-              <textarea name="description" required className="border rounded px-2 py-1.5 min-h-24" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Description</span>
+              <textarea name="description" required className="border rounded px-2 py-1.5 min-h-24 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Quantity</span>
-              <input name="quantity" type="number" min={0} required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Quantity</span>
+              <input name="quantity" type="number" min={0} required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex items-center gap-2 mt-6">
-              <input name="licenseRequired" type="checkbox" />
-              <span className="text-sm text-gray-700">License Required</span>
+              <input name="licenseRequired" type="checkbox" className="accent-black dark:accent-white" />
+              <span className="text-sm text-gray-700 dark:text-gray-300">License Required</span>
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Tag</span>
-              <input name="tag" className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Tag</span>
+              <input name="tag" className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Brand Id</span>
-              <input name="brandId" required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Brand Id</span>
+              <input name="brandId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Type Id</span>
-              <input name="typeId" required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Type Id</span>
+              <input name="typeId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Caliber Id</span>
-              <input name="caliberId" required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Caliber Id</span>
+              <input name="caliberId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Category Id</span>
-              <input name="categoryId" required className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Category Id</span>
+              <input name="categoryId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
           </div>
 
           <div className="flex items-center justify-end gap-2 mt-6">
-            <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border bg-white text-sm">Cancel</button>
-            <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-black text-white text-sm">
+            <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border bg-white dark:bg-[#111] text-sm text-black dark:text-white border-gray-300 dark:border-[#333]">Cancel</button>
+            <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-black text-white text-sm dark:bg-[#222] dark:text-white border border-gray-300 dark:border-[#333] hover:bg-gray-900 dark:hover:bg-[#333] transition-colors">
               {pending ? "Creating..." : "Create"}
             </button>
           </div>

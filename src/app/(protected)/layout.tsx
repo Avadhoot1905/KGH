@@ -1,27 +1,51 @@
-import type { Metadata } from "next";
-import { redirect } from "next/navigation";
-import { getServerSession } from "next-auth";
-import { headers } from "next/headers";
-import { authOptions } from "@/auth";
+export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Protected",
+import { ReactNode } from "react";
+import { getServerSession } from "next-auth";
+import { redirect } from "next/navigation";
+import { authOptions } from "@/auth";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
+
+type SessionUser = {
+  name?: string | null;
+  email?: string | null;
+  image?: string | null;
+  role?: string | null;
 };
 
-export default async function ProtectedLayout({ children }: { children: React.ReactNode }) {
-  const session = await getServerSession(authOptions);
-  if (!session) {
-    const hdrs = await headers();
-    const referer = hdrs.get("referer") || "/";
-    const destUrl = new URL(referer, referer.startsWith("http") ? undefined : undefined);
-    destUrl.searchParams.set("authRequired", "1");
-    // Provide a redirect param so client can send user to original page after sign-in
-    if (!destUrl.searchParams.get("redirect")) {
-      destUrl.searchParams.set("redirect", referer);
-    }
-    redirect(destUrl.toString());
+type Session = {
+  user?: SessionUser;
+};
+
+export default async function AdminLayout({ children }: { children: ReactNode }) {
+  const session = (await getServerSession(authOptions)) as Session;
+
+  // If not logged in, redirect to home
+  if (!session?.user?.email) {
+    redirect("/");
   }
-  return children as React.ReactElement;
+
+
+  // Fetch user from Prisma to get the latest role
+  const dbUser = await prisma.user.findUnique({
+    where: { email: session.user.email! },
+    select: { role: true },
+  });
+
+  // Debug: log dbUser to server console
+  console.log("AdminLayout dbUser:", dbUser);
+
+  // If not an admin, redirect to home
+  if (dbUser?.role !== "ADMIN") {
+    redirect("/");
+  }
+
+  // If admin, render children
+  return (
+    <section>
+      {children}
+    </section>
+  );
 }
-
-
