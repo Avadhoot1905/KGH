@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { FaSearch, FaShoppingCart, FaUser, FaHeart } from 'react-icons/fa';
+import { FaShoppingCart, FaUser, FaHeart } from 'react-icons/fa';
 import './Navbar.css';
 import SearchBar from './SearchBar';
 
@@ -16,7 +16,6 @@ export default function Navbar() {
         <div style={{ minWidth: 280 }}>
           <SearchBar />
         </div>
-        <FaSearch className="icon" title="Search" />
 
         {/* Wishlist Heart */}
         <div className="wishlist-icon">
