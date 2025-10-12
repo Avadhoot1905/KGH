@@ -182,6 +182,36 @@ export async function getProductById(productId: string): Promise<ProductListItem
   return (product as unknown as ProductListItem) ?? null;
 }
 
+// Get related products with full details for a product
+export async function getRelatedProductsWithDetails(productId: string): Promise<ProductListItem[]> {
+  if (!productId) return [];
+  
+  try {
+    // Query the join table to get related product IDs
+    const relatedProductIds: { B: string }[] = await prisma.$queryRaw`
+      SELECT "B" FROM "_RelatedProducts" WHERE "A" = ${productId}
+    `;
+    
+    if (!relatedProductIds || relatedProductIds.length === 0) {
+      return [];
+    }
+    
+    // Fetch full details of those related products
+    const ids = relatedProductIds.map(row => row.B);
+    const relatedProducts = await prisma.product.findMany({
+      where: {
+        id: { in: ids },
+      },
+      include: baseInclude,
+    });
+    
+    return (relatedProducts as unknown as ProductListItem[]) ?? [];
+  } catch (error) {
+    console.error("Error fetching related products:", error);
+    return [];
+  }
+}
+
 // Brute-force search wrapper for Navbar
 export async function searchProductsBrute(query: string): Promise<ProductListItem[]> {
   const q = (query || "").trim();
