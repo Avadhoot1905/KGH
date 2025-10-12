@@ -17,7 +17,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 //     "arcsmo19@gmail.com"
 //     "admin2@example.com",
 //   ];
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com"];
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com","ojasvikathuria777@gmail.com"];
 
   const userEmail = session.user.email as string;
   if (!allowedAdmins.includes(userEmail)) {

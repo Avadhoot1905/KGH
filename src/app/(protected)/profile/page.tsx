@@ -2,7 +2,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { getCurrentUser } from "@/actions/auth";
 import { getRecentOrders, getRecentlyViewedProducts } from "@/actions/profile";
-import styles from "@app/components1/profile.module.css";
+
 import ProfileToggleClient from "../../components1/profileToggleClient";
 
 export default async function ProfilePage() {
