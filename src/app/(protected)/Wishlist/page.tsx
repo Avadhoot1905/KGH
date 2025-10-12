@@ -3,10 +3,11 @@ import React, { useEffect, useState } from "react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import "./wishlist.css";
-import { getMyWishlistItems, moveWishlistItemToCart, removeFromMyWishlist, moveAllWishlistToCart } from "@/actions/wishlist";
+import { getMyWishlistItems, moveWishlistItemToCart, removeFromMyWishlist, moveAllWishlistToCart, getWishlistRecommendations } from "@/actions/wishlist";
+import Link from "next/link";
 
 interface WishlistItem {
-  id: number;
+  id: string;
   name: string;
   price: string;
   tag?: string;
@@ -15,39 +16,41 @@ interface WishlistItem {
 }
 
 interface Recommendation {
-  id: number;
+  id: string;
   name: string;
   price: string;
   img: string;
+  brand: string;
+  type: string;
 }
 
 export default function WishlistPage() {
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const loadData = async () => {
+    try {
+      const [items, recs] = await Promise.all([
+        getMyWishlistItems(),
+        getWishlistRecommendations(),
+      ]);
+      setWishlist(items as unknown as WishlistItem[]);
+      setRecommendations(recs as unknown as Recommendation[]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
     let mounted = true;
     (async () => {
-      try {
-        const items = await getMyWishlistItems();
-        if (mounted) setWishlist(items as unknown as WishlistItem[]);
-      } finally {
-        if (mounted) setLoading(false);
-      }
+      if (mounted) await loadData();
     })();
     return () => {
       mounted = false;
     };
   }, []);
-
-  const recommendations: Recommendation[] = [
-    { id: 1, name: "Combat Knife", price: "₹7,500", img: "/recs/knife.jpg" },
-    { id: 2, name: "Tactical Holster", price: "₹5,000", img: "/recs/holster.jpg" },
-    { id: 3, name: "Night Vision", price: "₹75,000", img: "/recs/nightvision.jpg" },
-    { id: 4, name: "Tactical Gloves", price: "₹2,000", img: "/recs/gloves.jpg" },
-    { id: 5, name: "Tactical Backpack", price: "₹6,000", img: "/recs/backpack.jpg" },
-    { id: 6, name: "Tactical Helmet", price: "₹10,000", img: "/recs/helmet.jpg" },
-  ];
 
   return (
     <div>
@@ -60,6 +63,7 @@ export default function WishlistPage() {
             onClick={async () => {
               await moveAllWishlistToCart();
               setWishlist([]);
+              setRecommendations([]);
             }}
           >
             Move All to Cart
@@ -85,6 +89,9 @@ export default function WishlistPage() {
                   onClick={async () => {
                     await moveWishlistItemToCart(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                    // Refresh recommendations
+                    const recs = await getWishlistRecommendations();
+                    setRecommendations(recs as unknown as Recommendation[]);
                   }}
                 >
                   Move to Cart
@@ -94,6 +101,9 @@ export default function WishlistPage() {
                   onClick={async () => {
                     await removeFromMyWishlist(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                    // Refresh recommendations
+                    const recs = await getWishlistRecommendations();
+                    setRecommendations(recs as unknown as Recommendation[]);
                   }}
                 >
                   Remove
@@ -104,18 +114,23 @@ export default function WishlistPage() {
           )}
         </div>
 
-        <div className="recommendations">
-          <h3>You Might Also Like</h3>
-          <div className="recommend-grid">
-            {recommendations.map((rec) => (
-              <div key={rec.id} className="recommend-card">
-                <img src={rec.img} alt={rec.name} className="recommend-img" />
-                <h4>{rec.name}</h4>
-                <p>{rec.price}</p>
-              </div>
-            ))}
+        {recommendations.length > 0 && (
+          <div className="recommendations">
+            <h3>You Might Also Like</h3>
+            <div className="recommend-grid">
+              {recommendations.map((rec) => (
+                <Link href={`/ProductDetail/${rec.id}`} key={rec.id} style={{ textDecoration: 'none' }}>
+                  <div className="recommend-card">
+                    <img src={rec.img} alt={rec.name} className="recommend-img" />
+                    <h4>{rec.name}</h4>
+                    <p className="recommend-meta">{rec.brand} • {rec.type}</p>
+                    <p className="recommend-price">{rec.price}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
           </div>
-        </div>
+        )}
       </div>
       <Footer />
     </div>
