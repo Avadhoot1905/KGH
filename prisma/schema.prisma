@@ -88,6 +88,8 @@ model Product {
   wishlistItems   Wishlist[]
   reviews         Review[]
   viewedBy        User[]      @relation("ViewedBy")
+  relatedProducts Product[]   @relation("RelatedProducts")
+  relatedTo       Product[]   @relation("RelatedProducts")
 }
 
 model Cart {
