@@ -103,9 +103,42 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
     router.push(`/Shop?q=${encodeURIComponent(q)}`);
   }
 
+  const handleClear = () => {
+    setQuery("");
+    setResults([]);
+    setIsOpen(false);
+    setAutoText("");
+  };
+
   return (
     <div ref={containerRef} className={className} style={{ position: "relative", minWidth: 260 }}>
-      <div style={{ position: "relative", background: "#111827", border: "1px solid #374151", borderRadius: 4 }}>
+      <div style={{ position: "relative" }}>
+        {/* Search Icon */}
+        <svg
+          style={{
+            position: "absolute",
+            left: 12,
+            top: "50%",
+            transform: "translateY(-50%)",
+            width: 16,
+            height: 16,
+            color: "#6b7280",
+            pointerEvents: "none",
+            zIndex: 1,
+          }}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            strokeWidth={2}
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+          />
+        </svg>
+
+        {/* Autocomplete Hint */}
         {autoText && query && autoText.toLowerCase().startsWith(query.toLowerCase()) && (
           <input
             aria-hidden
@@ -114,21 +147,36 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
             value={autoText}
             style={{
               position: "absolute",
-              inset: 0,
-              color: "#6b7280",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              color: "#4b5563",
               pointerEvents: "none",
               background: "transparent",
               border: "1px solid transparent",
-              padding: 6,
+              paddingLeft: 36,
+              paddingRight: query ? 32 : 12,
+              paddingTop: 6,
+              paddingBottom: 6,
+              borderRadius: 4,
             }}
           />
         )}
+
+        {/* Main Input */}
         <input
           className={inputClassName}
           placeholder={placeholder}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          onFocus={() => setIsOpen(results.length > 0)}
+          onFocus={(e) => {
+            setIsOpen(results.length > 0);
+            e.target.style.borderColor = "#dc2626";
+          }}
+          onBlur={(e) => {
+            e.target.style.borderColor = "#333";
+          }}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();
@@ -150,8 +198,51 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
               }
             }
           }}
-          style={{ padding: 6, borderRadius: 4, border: "1px solid transparent", width: "100%", background: "transparent", color: "#fff" }}
+          style={{
+            width: "100%",
+            paddingLeft: 36,
+            paddingRight: query ? 32 : 12,
+            paddingTop: 6,
+            paddingBottom: 6,
+            borderRadius: 4,
+            border: "1px solid #333",
+            background: "#1a1a1a",
+            color: "#fff",
+            fontSize: 14,
+            outline: "none",
+            transition: "border-color 0.2s",
+          }}
         />
+
+        {/* Clear Button */}
+        {query && (
+          <button
+            onClick={handleClear}
+            style={{
+              position: "absolute",
+              right: 8,
+              top: "50%",
+              transform: "translateY(-50%)",
+              color: "#9ca3af",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontSize: 18,
+              fontWeight: "bold",
+              padding: 4,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              transition: "color 0.2s",
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.color = "#dc2626"}
+            onMouseLeave={(e) => e.currentTarget.style.color = "#9ca3af"}
+            aria-label="Clear search"
+            type="button"
+          >
+            ✕
+          </button>
+        )}
       </div>
 
       {isOpen && results.length > 0 && (
@@ -159,16 +250,16 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
           role="listbox"
           style={{
             position: "absolute",
-            top: "100%",
+            top: "calc(100% + 4px)",
             left: 0,
             right: 0,
-            background: "#111827",
-            border: "1px solid #374151",
-            borderTop: "none",
+            background: "#1a1a1a",
+            border: "1px solid #333",
+            borderRadius: 4,
             zIndex: 50,
             maxHeight: 320,
             overflowY: "auto",
-            boxShadow: "0 12px 28px rgba(0,0,0,0.45)",
+            boxShadow: "0 10px 25px rgba(0,0,0,0.5)",
           }}
         >
           {results.map((p, idx) => (
@@ -181,27 +272,69 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 10,
-                padding: "8px 10px",
+                gap: 12,
+                padding: "10px 12px",
                 cursor: "pointer",
-                background: idx === highlightIndex ? "#1f2937" : "#111827",
+                background: idx === highlightIndex ? "#2a2a2a" : "transparent",
                 color: "#fff",
+                transition: "background-color 0.15s",
+                borderBottom: idx < results.length - 1 ? "1px solid #333" : "none",
               }}
             >
               {p.photoUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={p.photoUrl} alt={p.name} width={36} height={36} style={{ objectFit: "cover", borderRadius: 4 }} />
+                <img 
+                  src={p.photoUrl} 
+                  alt={p.name} 
+                  width={40} 
+                  height={40} 
+                  style={{ 
+                    objectFit: "cover", 
+                    borderRadius: 4,
+                    flexShrink: 0,
+                  }} 
+                />
               ) : (
-                <div style={{ width: 36, height: 36, borderRadius: 4, background: "#374151" }} />
+                <div style={{ 
+                  width: 40, 
+                  height: 40, 
+                  borderRadius: 4, 
+                  background: "#333",
+                  flexShrink: 0,
+                }} />
               )}
-              <div style={{ display: "flex", flexDirection: "column" }}>
-                <span style={{ fontSize: 14, fontWeight: 600, color: "#fff" }}>{p.name}</span>
-                <span style={{ fontSize: 12, color: "#9ca3af" }}>
+              <div style={{ 
+                display: "flex", 
+                flexDirection: "column", 
+                flex: 1,
+                minWidth: 0,
+              }}>
+                <span style={{ 
+                  fontSize: 14, 
+                  fontWeight: 600, 
+                  color: "#fff",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>{p.name}</span>
+                <span style={{ 
+                  fontSize: 12, 
+                  color: "#9ca3af",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}>
                   {[p.brandName, p.typeName, p.categoryName].filter(Boolean).join(" · ")}
                 </span>
               </div>
               {typeof p.price === "number" && (
-                <span style={{ marginLeft: "auto", fontSize: 13, color: "#e5e7eb" }}>
+                <span style={{ 
+                  marginLeft: "auto", 
+                  fontSize: 13, 
+                  color: "#e5e7eb",
+                  fontWeight: 500,
+                  flexShrink: 0,
+                }}>
                   ₹{Number(p.price).toLocaleString("en-IN")}
                 </span>
               )}

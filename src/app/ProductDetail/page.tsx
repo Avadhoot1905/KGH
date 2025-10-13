@@ -5,7 +5,8 @@ import Footer from "../components1/Footer";
 import AddToCartButton from "../components1/AddToCartButton";
 import WishlistButton from "../components1/WishlistButton";
 import ShareButton from "../components1/ShareButton";
-import { getProductById } from "@/actions/products";
+import { getProductById, getRelatedProductsWithDetails } from "@/actions/products";
+import Link from "next/link";
 
 function formatINR(amount: number) {
   try {
@@ -35,6 +36,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
   }
 
   const primaryPhoto = product.photos.find((p) => p.isPrimary) ?? product.photos[0];
+  const relatedProducts = await getRelatedProductsWithDetails(id);
 
   return (
     <div>
@@ -92,6 +94,34 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           </div>
         </div>
       </div>
+
+      {/* Featured Products Section */}
+      {relatedProducts && relatedProducts.length > 0 && (
+        <div className="product-detail-page">
+          <div className="related-products">
+            <h2>FEATURED PRODUCTS</h2>
+            <div className="product-grid">
+              {relatedProducts.map((relatedProduct) => {
+                const relatedPrimaryPhoto = relatedProduct.photos.find((p) => p.isPrimary) ?? relatedProduct.photos[0];
+                return (
+                  <Link href={`/ProductDetail/${relatedProduct.id}`} key={relatedProduct.id} style={{ textDecoration: 'none' }}>
+                    <div className="product-card">
+                      {relatedPrimaryPhoto ? (
+                        <img src={relatedPrimaryPhoto.url} alt={relatedPrimaryPhoto.alt ?? relatedProduct.name} />
+                      ) : (
+                        <div style={{ width: '100%', height: '150px', background: '#333', borderRadius: '8px' }} />
+                      )}
+                      <h4>{relatedProduct.name}</h4>
+                      <p>{relatedProduct.brand.name} • {relatedProduct.type.name}</p>
+                      <p className="price">{formatINR(relatedProduct.price)}</p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </div>

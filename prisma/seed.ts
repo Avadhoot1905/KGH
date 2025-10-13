@@ -178,6 +178,386 @@ async function createProducts(products: SeedProductInput[]) {
   return created;
 }
 
+async function createProductRelationships() {
+  console.log("Creating product relationships...");
+  
+  // Helper function to find product by name
+  const findProduct = async (name: string) => {
+    return await prisma.product.findFirst({ where: { name } });
+  };
+
+  // Define relationships: product name -> related product names
+  const relationships: Record<string, string[]> = {
+    // Glock 19 related products
+    "Glock 19 Gen5 9mm": [
+      "Glock 17 Gen5 9mm",
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Safariland OWB Holster - Glock 19",
+      "Holosun HS507C X2 Red Dot",
+      "SureFire X300U-B Weapon Light",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Glock 43X 9mm",
+      "Glock 19 Gen5 MOS 9mm",
+    ],
+
+    // Glock 17 related products
+    "Glock 17 Gen5 9mm": [
+      "Glock 19 Gen5 9mm",
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Holosun HS507C X2 Red Dot",
+      "SureFire X300U-B Weapon Light",
+      "Glock 17 17-round Magazine",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Glock 19 Gen5 MOS 9mm",
+    ],
+
+    // SIG P365 related products
+    "SIG P365 9mm": [
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Glock 19 Gen5 9mm",
+      "Glock 43X 9mm",
+      "Holosun HS507C X2 Red Dot",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "SIG MCX Rattler .300 BLK",
+    ],
+
+    // AR-15 related products
+    "AR-15 16in 5.56 NATO Carbine": [
+      "Federal 5.56 NATO 55gr FMJ - 500rd",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Magpul PMAG 30 AR/M4 Gen M3",
+      "Blue Force Gear Vickers Sling",
+      "SureFire Scout Light Pro",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "Magpul MS1 Sling",
+      "Hoppe's Boresnake - .223/5.56",
+    ],
+
+    // AK-47 related products
+    "AK-47 7.62x39 Rifle": [
+      "Blue Force Gear Vickers Sling",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "SureFire Scout Light Pro",
+      "Magpul MS1 Sling",
+    ],
+
+    // Remington 700 related products
+    "Remington 700 .308 Win": [
+      "Winchester .308 Win 168gr BTHP - 100rd",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Leupold VX-Freedom 4-12x40 Scope",
+      "Blue Force Gear Vickers Sling",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "FN SCAR 17S .308 Win",
+      "Tikka T3x Lite .308 Win",
+    ],
+
+    // FN SCAR 17S related products
+    "FN SCAR 17S .308 Win": [
+      "Winchester .308 Win 168gr BTHP - 100rd",
+      "Leupold VX-Freedom 4-12x40 Scope",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Blue Force Gear Vickers Sling",
+      "SureFire Scout Light Pro",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Remington 700 .308 Win",
+      "Tikka T3x Lite .308 Win",
+    ],
+
+    // Mossberg 590 related products
+    "Mossberg 590 12 Gauge": [
+      "Blue Force Gear Vickers Sling",
+      "SureFire Scout Light Pro",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "Remington 870 Express 12 Gauge",
+      "Benelli M4 12 Gauge",
+    ],
+
+    // Ruger 10/22 related products
+    "Ruger 10/22 .22 LR": [
+      "Federal .22 LR 36gr HP - 525rd",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "Blue Force Gear Vickers Sling",
+    ],
+
+    // Colt Python related products
+    "Colt Python .357 Magnum": [
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "Ruger LCR .38 Special",
+      "Beretta 92FS 9mm",
+    ],
+
+    // HK VP9 related products
+    "HK VP9 9mm": [
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Holosun HS507C X2 Red Dot",
+      "SureFire X300U-B Weapon Light",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Glock 19 Gen5 9mm",
+      "SIG P365 9mm",
+    ],
+
+    // Glock 19 MOS related products
+    "Glock 19 Gen5 MOS 9mm": [
+      "Holosun HS507C X2 Red Dot",
+      "Leupold DeltaPoint Pro Red Dot",
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "SureFire X300U-B Weapon Light",
+      "Glock 19 Gen5 9mm",
+      "Glock 17 Gen5 9mm",
+      "Safariland OWB Holster - Glock 19",
+    ],
+
+    // Glock 43X related products
+    "Glock 43X 9mm": [
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Holosun HS507C X2 Red Dot",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "SIG P365 9mm",
+      "Glock 19 Gen5 9mm",
+    ],
+
+    // Smith & Wesson M&P9 related products
+    "Smith & Wesson M&P9 2.0 Compact": [
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Holosun HS507C X2 Red Dot",
+      "SureFire X300U-B Weapon Light",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Glock 19 Gen5 9mm",
+      "SIG P365 9mm",
+    ],
+
+    // Beretta 92FS related products
+    "Beretta 92FS 9mm": [
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "SureFire X300U-B Weapon Light",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+      "Glock 17 Gen5 9mm",
+      "HK VP9 9mm",
+    ],
+
+    // Ammunition related products
+    "Winchester 9mm 115gr FMJ - 200rd": [
+      "Glock 19 Gen5 9mm",
+      "Glock 17 Gen5 9mm",
+      "SIG P365 9mm",
+      "HK VP9 9mm",
+      "Beretta 92FS 9mm",
+      "Smith & Wesson M&P9 2.0 Compact",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+    ],
+
+    "Federal 5.56 NATO 55gr FMJ - 500rd": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "Magpul PMAG 30 AR/M4 Gen M3",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Blue Force Gear Vickers Sling",
+    ],
+
+    "Winchester .308 Win 168gr BTHP - 100rd": [
+      "Remington 700 .308 Win",
+      "FN SCAR 17S .308 Win",
+      "Tikka T3x Lite .308 Win",
+      "Leupold VX-Freedom 4-12x40 Scope",
+      "Vortex Crossfire II 3-9x40 Scope",
+    ],
+
+    "Federal .22 LR 36gr HP - 525rd": [
+      "Ruger 10/22 .22 LR",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+    ],
+
+    // Optics related products
+    "Vortex Crossfire II 3-9x40 Scope": [
+      "Remington 700 .308 Win",
+      "Ruger 10/22 .22 LR",
+      "AR-15 16in 5.56 NATO Carbine",
+      "FN SCAR 17S .308 Win",
+      "Leupold VX-Freedom 4-12x40 Scope",
+    ],
+
+    "Holosun HS507C X2 Red Dot": [
+      "Glock 19 Gen5 MOS 9mm",
+      "Glock 19 Gen5 9mm",
+      "SIG P365 9mm",
+      "HK VP9 9mm",
+      "Leupold DeltaPoint Pro Red Dot",
+    ],
+
+    "Leupold VX-Freedom 4-12x40 Scope": [
+      "Remington 700 .308 Win",
+      "FN SCAR 17S .308 Win",
+      "Tikka T3x Lite .308 Win",
+      "Winchester .308 Win 168gr BTHP - 100rd",
+      "Vortex Crossfire II 3-9x40 Scope",
+    ],
+
+    // Accessories
+    "Magpul PMAG 30 AR/M4 Gen M3": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "Federal 5.56 NATO 55gr FMJ - 500rd",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Blue Force Gear Vickers Sling",
+    ],
+
+    "Safariland OWB Holster - Glock 19": [
+      "Glock 19 Gen5 9mm",
+      "Glock 19 Gen5 MOS 9mm",
+      "Winchester 9mm 115gr FMJ - 200rd",
+    ],
+
+    "Blue Force Gear Vickers Sling": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "Mossberg 590 12 Gauge",
+      "Remington 700 .308 Win",
+      "AK-47 7.62x39 Rifle",
+      "Magpul MS1 Sling",
+    ],
+
+    "SureFire X300U-B Weapon Light": [
+      "Glock 19 Gen5 9mm",
+      "Glock 17 Gen5 9mm",
+      "HK VP9 9mm",
+      "Beretta 92FS 9mm",
+      "Smith & Wesson M&P9 2.0 Compact",
+      "SureFire Scout Light Pro",
+    ],
+
+    // Safety and Maintenance
+    "Peltor Sport Tactical 500 Electronic Earmuff": [
+      "Glock 19 Gen5 9mm",
+      "AR-15 16in 5.56 NATO Carbine",
+      "Remington 700 .308 Win",
+      "Mossberg 590 12 Gauge",
+      "Ruger 10/22 .22 LR",
+    ],
+
+    "Hoppe's No.9 Cleaning Kit - Universal": [
+      "Glock 19 Gen5 9mm",
+      "AR-15 16in 5.56 NATO Carbine",
+      "Remington 700 .308 Win",
+      "Ruger 10/22 .22 LR",
+      "Hoppe's Boresnake - .223/5.56",
+    ],
+
+    // Additional products
+    "Ruger LCR .38 Special": [
+      "Colt Python .357 Magnum",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+    ],
+
+    "SIG MCX Rattler .300 BLK": [
+      "SureFire Scout Light Pro",
+      "Holosun HS507C X2 Red Dot",
+      "Blue Force Gear Vickers Sling",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Magpul MS1 Sling",
+    ],
+
+    "Remington 870 Express 12 Gauge": [
+      "Mossberg 590 12 Gauge",
+      "Blue Force Gear Vickers Sling",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+    ],
+
+    "Benelli M4 12 Gauge": [
+      "Mossberg 590 12 Gauge",
+      "Remington 870 Express 12 Gauge",
+      "Blue Force Gear Vickers Sling",
+      "SureFire Scout Light Pro",
+      "Peltor Sport Tactical 500 Electronic Earmuff",
+    ],
+
+    "Tikka T3x Lite .308 Win": [
+      "Winchester .308 Win 168gr BTHP - 100rd",
+      "Leupold VX-Freedom 4-12x40 Scope",
+      "Vortex Crossfire II 3-9x40 Scope",
+      "Remington 700 .308 Win",
+      "FN SCAR 17S .308 Win",
+      "Blue Force Gear Vickers Sling",
+    ],
+
+    "Magpul MS1 Sling": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "Blue Force Gear Vickers Sling",
+      "SIG MCX Rattler .300 BLK",
+      "Magpul PMAG 30 AR/M4 Gen M3",
+    ],
+
+    "Leupold DeltaPoint Pro Red Dot": [
+      "Holosun HS507C X2 Red Dot",
+      "Glock 19 Gen5 MOS 9mm",
+      "Smith & Wesson M&P9 2.0 Compact",
+    ],
+
+    "Glock 17 17-round Magazine": [
+      "Glock 17 Gen5 9mm",
+      "Winchester 9mm 115gr FMJ - 200rd",
+      "Glock 19 Gen5 9mm",
+    ],
+
+    "SureFire Scout Light Pro": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "FN SCAR 17S .308 Win",
+      "SIG MCX Rattler .300 BLK",
+      "Mossberg 590 12 Gauge",
+      "SureFire X300U-B Weapon Light",
+    ],
+
+    "Hoppe's Boresnake - .223/5.56": [
+      "AR-15 16in 5.56 NATO Carbine",
+      "Federal 5.56 NATO 55gr FMJ - 500rd",
+      "Hoppe's No.9 Cleaning Kit - Universal",
+    ],
+  };
+
+  let relationshipsCreated = 0;
+
+  for (const [productName, relatedNames] of Object.entries(relationships)) {
+    const product = await findProduct(productName);
+    if (!product) {
+      console.log(`Product not found: ${productName}`);
+      continue;
+    }
+
+    const relatedProductIds: string[] = [];
+    for (const relatedName of relatedNames) {
+      const relatedProduct = await findProduct(relatedName);
+      if (relatedProduct) {
+        relatedProductIds.push(relatedProduct.id);
+      }
+    }
+
+    if (relatedProductIds.length > 0) {
+      await prisma.product.update({
+        where: { id: product.id },
+        data: {
+          relatedProducts: {
+            connect: relatedProductIds.map(id => ({ id })),
+          },
+        },
+      });
+      relationshipsCreated += relatedProductIds.length;
+      console.log(`Connected ${relatedProductIds.length} related products to "${productName}"`);
+    }
+  }
+
+  console.log(`Total relationships created: ${relationshipsCreated}`);
+}
+
 function buildSeedProducts(): SeedProductInput[] {
   const img = (w: number, h: number, seed: number) => `https://picsum.photos/seed/${seed}/${w}/${h}`;
 
@@ -696,6 +1076,9 @@ async function main() {
   console.log(`Seeding products: ${products.length} items...`);
   const created = await createProducts(products);
   console.log(`Seed complete. Upserted ${created} products.`);
+
+  // Create product relationships after seeding products
+  await createProductRelationships();
 }
 
 main()

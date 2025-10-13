@@ -1,6 +1,6 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 
@@ -139,6 +139,76 @@ export async function moveAllWishlistToCart() {
   });
 
   return result;
+}
+
+export type RecommendedProduct = {
+  id: string;
+  name: string;
+  price: string;
+  img: string;
+  brand: string;
+  type: string;
+};
+
+export async function getWishlistRecommendations(): Promise<RecommendedProduct[]> {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return [];
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return [];
+
+  try {
+    // Get all wishlist product IDs
+    const wishlistEntries = await prisma.wishlist.findMany({
+      where: { userId: user.id },
+      select: { productId: true },
+    });
+
+    if (wishlistEntries.length === 0) return [];
+
+    const wishlistProductIds = wishlistEntries.map((w) => w.productId);
+
+    // Query the join table to get related product IDs for all wishlist items
+    const relatedProductIds: { B: string }[] = await prisma.$queryRaw`
+      SELECT DISTINCT "B" FROM "_RelatedProducts" 
+      WHERE "A" IN (${Prisma.join(wishlistProductIds)})
+      AND "B" NOT IN (${Prisma.join(wishlistProductIds)})
+      LIMIT 20
+    `;
+
+    if (!relatedProductIds || relatedProductIds.length === 0) {
+      return [];
+    }
+
+    // Fetch full details of those related products
+    const ids = relatedProductIds.map((row) => row.B);
+    const products = await prisma.product.findMany({
+      where: {
+        id: { in: ids },
+      },
+      include: {
+        brand: { select: { name: true } },
+        type: { select: { name: true } },
+        photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" } },
+      },
+      take: 12,
+    });
+
+    return products.map((p) => {
+      const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
+      return {
+        id: p.id,
+        name: p.name,
+        price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
+        img: primary?.url || "/next.svg",
+        brand: p.brand.name,
+        type: p.type.name,
+      };
+    });
+  } catch (error) {
+    console.error("Error fetching wishlist recommendations:", error);
+    return [];
+  }
 }
 
 

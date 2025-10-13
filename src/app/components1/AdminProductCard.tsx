@@ -3,8 +3,9 @@
 import Image from "next/image";
 import { useRef, useState, FormEvent, useEffect } from "react";
 import { ProductListItem } from "@/actions/products";
-import { updateProductAction, deleteProductAction } from "@/actions/products";
+import { updateProductAction, deleteProductAction, getAllProductsForSelector } from "@/actions/products";
 import { useRouter } from "next/navigation";
+import RelatedProductsSelector from "./RelatedProductsSelector";
 
 type AdminProductCardProps = {
   product: ProductListItem;
@@ -18,12 +19,51 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const [error, setError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
+  const [selectedRelatedIds, setSelectedRelatedIds] = useState<string[]>(
+    product.relatedProducts?.map((p) => p.id) || []
+  );
+  const [loadingProducts, setLoadingProducts] = useState(false);
+
+  useEffect(() => {
+    setLoadingProducts(true);
+    getAllProductsForSelector()
+      .then((products) => {
+        setAllProducts(products);
+      })
+      .catch((e) => {
+        setError("Failed to load products");
+      })
+      .finally(() => {
+        setLoadingProducts(false);
+      });
+  }, []);
 
   useEffect(() => {
     return () => {
       if (previewUrl) URL.revokeObjectURL(previewUrl);
     };
   }, [previewUrl]);
+
+  async function loadProducts() {
+    if (allProducts.length === 0 && !loadingProducts) {
+      setLoadingProducts(true);
+      try {
+        const products = await getAllProductsForSelector();
+        setAllProducts(products);
+      } catch (e) {
+        console.error("Failed to load products", e);
+      } finally {
+        setLoadingProducts(false);
+      }
+    }
+  }
+
+  function openDialog() {
+    loadProducts();
+    setSelectedRelatedIds(product.relatedProducts?.map((p) => p.id) || []);
+    dialogRef.current?.showModal();
+  }
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -110,7 +150,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       <div className="flex items-center justify-end gap-2 mt-4">
         <button
           className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
-          onClick={() => dialogRef.current?.showModal()}
+          onClick={openDialog}
         >
           Edit
         </button>
@@ -207,6 +247,18 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               <span className="text-sm text-gray-600">Category Id</span>
               <input name="categoryId" placeholder={product.category?.name} className="border rounded px-2 py-1.5" />
             </label>
+            <div className="md:col-span-2">
+              {loadingProducts ? (
+                <div className="text-sm text-gray-500">Loading products...</div>
+              ) : (
+                <RelatedProductsSelector
+                  products={allProducts}
+                  selectedIds={selectedRelatedIds}
+                  onChange={setSelectedRelatedIds}
+                  currentProductId={product.id}
+                />
+              )}
+            </div>
           </div>
 
           <div className="flex items-center justify-end gap-2 mt-6">
