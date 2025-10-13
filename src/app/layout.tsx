@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import ClientAuthPopup from "./shared/ClientAuthPopup";
 import NextAuthProvider from "./components1/NextAuthProvider";
+import ConditionalAppointmentButton from "./components1/ConditionalAppointmentButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -32,6 +33,7 @@ export default function RootLayout({
         <NextAuthProvider>
           {children}
           <ClientAuthPopup />
+          <ConditionalAppointmentButton />
         </NextAuthProvider>
       </body>
     </html>

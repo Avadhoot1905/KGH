@@ -1,0 +1,58 @@
+.appointment-floating-btn {
+  position: fixed;
+  bottom: 2rem;
+  right: 2rem;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%);
+  border: none;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(211, 47, 47, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999;
+  transition: all 0.3s ease;
+  animation: float 3s ease-in-out infinite;
+}
+
+.appointment-floating-btn:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 30px rgba(211, 47, 47, 0.6);
+  background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+}
+
+.appointment-floating-btn:active {
+  transform: scale(0.95);
+}
+
+.calendar-icon {
+  width: 28px;
+  height: 28px;
+}
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .appointment-floating-btn {
+    width: 50px;
+    height: 50px;
+    bottom: 1.5rem;
+    right: 1.5rem;
+  }
+
+  .calendar-icon {
+    width: 24px;
+    height: 24px;
+  }
+}

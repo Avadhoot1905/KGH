@@ -1,0 +1,393 @@
+/* Admin Appointments Popup Styles */
+.admin-appointments-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1001;
+  backdrop-filter: blur(4px);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-appointments-popup {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 900px;
+  width: 95%;
+  max-height: 90vh;
+  overflow-y: auto;
+  position: relative;
+  border: 1px solid #333;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6);
+  animation: slideIn 0.3s ease-out;
+}
+
+.admin-appointments-close {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+  background: none;
+  border: none;
+  color: #aaa;
+  font-size: 1.8rem;
+  cursor: pointer;
+  padding: 0.5rem;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+  line-height: 1;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+.admin-appointments-close:hover {
+  color: #fff;
+  background: #333;
+}
+
+.admin-appointments-header {
+  margin-bottom: 1.5rem;
+  padding-right: 3rem;
+}
+
+.admin-appointments-title {
+  color: #fff;
+  font-size: 1.8rem;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.contact-info {
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 8px;
+  padding: 0.8rem 1rem;
+  margin-top: 0.8rem;
+}
+
+.contact-info p {
+  color: #aaa;
+  font-size: 0.85rem;
+  margin: 0.2rem 0;
+}
+
+.contact-info strong {
+  color: #fff;
+}
+
+/* Filter Tabs */
+.filter-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid #333;
+  overflow-x: auto;
+}
+
+.filter-tab {
+  background: none;
+  border: none;
+  color: #888;
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding: 0.8rem 1.2rem;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.filter-tab:hover {
+  color: #fff;
+}
+
+.filter-tab.active {
+  color: #d32f2f;
+  border-bottom-color: #d32f2f;
+}
+
+/* Appointments List */
+.appointments-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.no-appointments {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: #888;
+}
+
+/* Appointment Card */
+.appointment-card {
+  background: #252525;
+  border: 1px solid #333;
+  border-radius: 10px;
+  padding: 1.2rem;
+  transition: all 0.3s ease;
+}
+
+.appointment-card:hover {
+  border-color: #444;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.appointment-card.pending {
+  border-left: 4px solid #ff9800;
+}
+
+.appointment-card.approved {
+  border-left: 4px solid #4caf50;
+}
+
+.appointment-card.declined {
+  border-left: 4px solid #f44336;
+}
+
+.appointment-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+  padding-bottom: 1rem;
+  border-bottom: 1px solid #333;
+}
+
+.user-info h3 {
+  color: #fff;
+  font-size: 1.1rem;
+  font-weight: 600;
+  margin: 0 0 0.3rem 0;
+}
+
+.user-email {
+  color: #888;
+  font-size: 0.85rem;
+  margin: 0;
+}
+
+.status-badge {
+  padding: 0.4rem 0.9rem;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.status-badge.pending {
+  background: rgba(255, 152, 0, 0.2);
+  color: #ff9800;
+  border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.status-badge.approved {
+  background: rgba(76, 175, 80, 0.2);
+  color: #4caf50;
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.status-badge.declined {
+  background: rgba(244, 67, 54, 0.2);
+  color: #f44336;
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+/* Appointment Details */
+.appointment-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.appointment-detail {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.detail-label {
+  color: #888;
+  font-size: 0.9rem;
+  min-width: 80px;
+  font-weight: 500;
+}
+
+.detail-value {
+  color: #fff;
+  font-size: 0.9rem;
+}
+
+/* Action Buttons */
+.appointment-card-actions {
+  display: flex;
+  gap: 0.8rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid #333;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 0.7rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  border: none;
+}
+
+.approve-btn {
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  color: white;
+}
+
+.approve-btn:hover {
+  background: linear-gradient(135deg, #66bb6a 0%, #43a047 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.decline-btn {
+  background: transparent;
+  color: #f44336;
+  border: 2px solid #f44336;
+}
+
+.decline-btn:hover {
+  background: rgba(244, 67, 54, 0.1);
+  transform: translateY(-2px);
+}
+
+.action-btn:active {
+  transform: translateY(0);
+}
+
+/* Messages */
+.declined-message,
+.approved-message {
+  margin-top: 1rem;
+  padding: 1rem;
+  border-radius: 8px;
+  font-size: 0.85rem;
+}
+
+.declined-message {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.declined-message p {
+  color: #f44336;
+  margin: 0.3rem 0;
+}
+
+.declined-message a {
+  color: #f44336;
+  text-decoration: underline;
+}
+
+.declined-message a:hover {
+  color: #ff5252;
+}
+
+.approved-message {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+}
+
+.approved-message p {
+  color: #4caf50;
+  margin: 0.3rem 0;
+}
+
+.contact-note {
+  color: #66bb6a !important;
+  font-size: 0.8rem;
+}
+
+/* Responsive Styles */
+@media (max-width: 768px) {
+  .admin-appointments-popup {
+    padding: 1.5rem;
+    max-width: 98%;
+  }
+
+  .admin-appointments-title {
+    font-size: 1.4rem;
+  }
+
+  .appointment-card-header {
+    flex-direction: column;
+    gap: 0.8rem;
+  }
+
+  .appointment-card-actions {
+    flex-direction: column;
+  }
+
+  .filter-tabs {
+    gap: 0.3rem;
+  }
+
+  .filter-tab {
+    padding: 0.6rem 0.8rem;
+    font-size: 0.85rem;
+  }
+
+  .detail-label {
+    min-width: 70px;
+    font-size: 0.85rem;
+  }
+
+  .detail-value {
+    font-size: 0.85rem;
+  }
+}
+
+/* Scrollbar Styles */
+.admin-appointments-popup::-webkit-scrollbar {
+  width: 8px;
+}
+
+.admin-appointments-popup::-webkit-scrollbar-track {
+  background: #1a1a1a;
+}
+
+.admin-appointments-popup::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.admin-appointments-popup::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}

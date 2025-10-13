@@ -19,6 +19,11 @@ const AdminProductCard = dynamic(() => import("@/app/components1/AdminProductCar
   loading: () => <div className="h-32 bg-[#1a1a1a] rounded animate-pulse" />
 });
 
+const AdminAppointmentsButton = dynamic(() => import("@/app/components1/AdminAppointmentsButton"), {
+  ssr: false,
+  loading: () => <div className="w-32 h-9 bg-red-600 rounded animate-pulse" />
+});
+
 type AdminProductsClientProps = {
   products: ProductListItem[];
 };
@@ -57,6 +62,7 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
           )}
         </div>
         <div className="flex items-center gap-3">
+          <AdminAppointmentsButton />
           <AdminSearchBar onSearch={setSearchQuery} />
           <AdminCreateProduct buttonClassName="px-3 py-1.5 rounded bg-red-600 text-white text-sm border border-red-600 hover:bg-red-700 transition-colors" />
         </div>
