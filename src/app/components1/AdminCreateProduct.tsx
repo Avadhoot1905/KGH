@@ -95,7 +95,7 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
 
           <div className="flex items-center justify-end gap-2 mt-6">
             <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border bg-white dark:bg-[#111] text-sm text-black dark:text-white border-gray-300 dark:border-[#333]">Cancel</button>
-            <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-black text-white text-sm dark:bg-[#222] dark:text-white border border-gray-300 dark:border-[#333] hover:bg-gray-900 dark:hover:bg-[#333] transition-colors">
+            <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-red-600 text-white text-sm border border-red-600 hover:bg-red-700 transition-colors">
               {pending ? "Creating..." : "Create"}
             </button>
           </div>
@@ -104,5 +104,4 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
     </>
   );
 }
-
 
