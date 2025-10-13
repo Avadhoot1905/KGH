@@ -50,7 +50,8 @@ model User {
   sessions       Session[]
   wishlistItems  Wishlist[]
   reviews        Review[]
-  viewedProducts Product[]  @relation("ViewedBy")
+  viewedProducts Product[]     @relation("ViewedBy")
+  appointments   Appointment[]
 }
 
 model VerificationToken {
@@ -212,4 +213,26 @@ enum OrderStatus {
   PENDING
   COMPLETED
   CANCELLED
+}
+
+enum AppointmentStatus {
+  PENDING
+  APPROVED
+  DECLINED
+}
+
+model Appointment {
+  id        String            @id @default(cuid())
+  userId    String
+  date      String
+  time      String
+  reason    String
+  status    AppointmentStatus @default(PENDING)
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+  user      User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@map("appointments")
 }

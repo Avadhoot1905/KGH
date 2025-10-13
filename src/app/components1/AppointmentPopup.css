@@ -275,6 +275,35 @@
   margin: 0.4rem 0;
 }
 
+/* Error and Loading Messages */
+.error-message,
+.loading-message {
+  padding: 1rem;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  text-align: center;
+}
+
+.error-message {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+}
+
+.error-message p {
+  color: #f44336;
+  margin: 0;
+}
+
+.loading-message {
+  background: #252525;
+  border: 1px solid #333;
+}
+
+.loading-message p {
+  color: #888;
+  margin: 0;
+}
+
 .cancel-btn {
   background: transparent;
   color: #d32f2f;

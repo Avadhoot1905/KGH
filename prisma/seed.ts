@@ -2,6 +2,9 @@ import { PrismaClient, ProductTag } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
+// Define AppointmentStatus type until Prisma generates it
+type AppointmentStatus = "PENDING" | "APPROVED" | "DECLINED";
+
 type SeedProductInput = {
   name: string;
   price: number;
@@ -1068,6 +1071,135 @@ function buildSeedProducts(): SeedProductInput[] {
   return all;
 }
 
+async function seedAppointments() {
+  console.log("Seeding appointments...");
+
+  // NOTE: TypeScript errors here will be fixed after running:
+  // npx prisma migrate dev --name add_appointments
+  // The appointment model doesn't exist in Prisma Client yet.
+
+  // First, get or create some test users
+  const testUsers = [
+    {
+      email: "john.doe@example.com",
+      name: "John Doe",
+    },
+    {
+      email: "jane.smith@example.com",
+      name: "Jane Smith",
+    },
+    {
+      email: "mike.johnson@example.com",
+      name: "Mike Johnson",
+    },
+    {
+      email: "sarah.williams@example.com",
+      name: "Sarah Williams",
+    },
+    {
+      email: "david.brown@example.com",
+      name: "David Brown",
+    },
+  ];
+
+  const users = [];
+  for (const userData of testUsers) {
+    const user = await prisma.user.upsert({
+      where: { email: userData.email },
+      update: {},
+      create: {
+        email: userData.email,
+        name: userData.name,
+        role: "NORMAL_USER",
+      },
+    });
+    users.push(user);
+  }
+
+  // Create appointments with various statuses
+  const appointments = [
+    {
+      userId: users[0].id,
+      date: "2025-10-20",
+      time: "10:00",
+      reason: "Product inquiry and demonstration for Glock 19 Gen5. Interested in learning about safety features and accuracy.",
+      status: "PENDING" as const,
+    },
+    {
+      userId: users[1].id,
+      date: "2025-10-22",
+      time: "14:30",
+      reason: "License application assistance. Need help with paperwork and understanding state requirements.",
+      status: "PENDING" as const,
+    },
+    {
+      userId: users[2].id,
+      date: "2025-10-18",
+      time: "11:00",
+      reason: "Custom order consultation for AR-15 build. Looking for advice on parts selection and assembly.",
+      status: "APPROVED" as const,
+    },
+    {
+      userId: users[3].id,
+      date: "2025-10-25",
+      time: "09:30",
+      reason: "Range training session. First-time shooter looking for basic firearm safety and handling instruction.",
+      status: "PENDING" as const,
+    },
+    {
+      userId: users[4].id,
+      date: "2025-10-15",
+      time: "15:00",
+      reason: "Trade-in evaluation for used firearms. Have several pieces to discuss.",
+      status: "DECLINED" as const,
+    },
+    {
+      userId: users[0].id,
+      date: "2025-10-28",
+      time: "13:00",
+      reason: "Optics installation and zeroing service. Recently purchased Vortex scope and need professional setup.",
+      status: "APPROVED" as const,
+    },
+    {
+      userId: users[1].id,
+      date: "2025-10-30",
+      time: "10:30",
+      reason: "Concealed carry permit class inquiry. Want to know more about the training program.",
+      status: "PENDING" as const,
+    },
+    {
+      userId: users[3].id,
+      date: "2025-11-01",
+      time: "14:00",
+      reason: "Maintenance and cleaning service for my rifle. Annual checkup needed.",
+      status: "APPROVED" as const,
+    },
+  ];
+
+  let appointmentCount = 0;
+  for (const appointmentData of appointments) {
+    await prisma.appointment.upsert({
+      where: {
+        // Using a composite to avoid duplicates in re-runs
+        id: `${appointmentData.userId}-${appointmentData.date}-${appointmentData.time}`,
+      },
+      update: {},
+      create: {
+        id: `${appointmentData.userId}-${appointmentData.date}-${appointmentData.time}`,
+        userId: appointmentData.userId,
+        date: appointmentData.date,
+        time: appointmentData.time,
+        reason: appointmentData.reason,
+        status: appointmentData.status,
+      },
+    });
+    appointmentCount++;
+  }
+
+  console.log(`Seeded ${appointmentCount} appointments for ${users.length} users.`);
+  return appointmentCount;
+}
+
 async function main() {
   console.log("Seeding base data (categories, types, calibers, brands)...");
   await upsertBaseData();
@@ -1079,6 +1211,9 @@ async function main() {
 
   // Create product relationships after seeding products
   await createProductRelationships();
+
+  // Seed appointments
+  await seedAppointments();
 }
 
 main()

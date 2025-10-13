@@ -2,14 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import './AppointmentPopup.css';
-
-interface AppointmentData {
-  date: string;
-  time: string;
-  reason: string;
-  status: 'pending' | 'approved' | 'declined';
-  bookedAt: string;
-}
+import { createAppointment, getUserAppointment, cancelAppointment } from '@/actions/appointments';
+import type { AppointmentData } from '@/actions/appointments';
 
 interface AppointmentPopupProps {
   onClose: () => void;
@@ -27,54 +21,60 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
     reason: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    // Load existing appointment from localStorage
-    const stored = localStorage.getItem('appointment');
-    if (stored) {
-      setExistingAppointment(JSON.parse(stored));
-    }
+    // Load existing appointment from database
+    loadAppointment();
   }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const loadAppointment = async () => {
+    try {
+      setIsLoading(true);
+      const appointment = await getUserAppointment();
+      setExistingAppointment(appointment);
+    } catch (err) {
+      console.error('Error loading appointment:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setError(null);
 
-    // Simulate API call
-    setTimeout(() => {
-      const appointment: AppointmentData = {
-        ...formData,
-        status: 'pending',
-        bookedAt: new Date().toISOString(),
-      };
-
-      localStorage.setItem('appointment', JSON.stringify(appointment));
-      setExistingAppointment(appointment);
-      
-      // Also add to admin appointments list
-      const adminAppointments = JSON.parse(localStorage.getItem('admin_appointments') || '[]');
-      const newAdminAppointment = {
-        id: Date.now().toString(),
-        userName: 'Guest User', // In production, get from session
-        userEmail: 'user@example.com', // In production, get from session
+    try {
+      const appointment = await createAppointment({
         date: formData.date,
         time: formData.time,
         reason: formData.reason,
-        status: 'pending',
-        bookedAt: new Date().toISOString(),
-      };
-      adminAppointments.push(newAdminAppointment);
-      localStorage.setItem('admin_appointments', JSON.stringify(adminAppointments));
-      
-      setIsSubmitting(false);
+      });
+
+      setExistingAppointment(appointment);
       setFormData({ date: '', time: '', reason: '' });
-    }, 500);
+    } catch (err: any) {
+      setError(err.message || 'Failed to create appointment');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleCancel = () => {
-    if (confirm('Are you sure you want to cancel this appointment?')) {
-      localStorage.removeItem('appointment');
+  const handleCancel = async () => {
+    if (!confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await cancelAppointment();
       setExistingAppointment(null);
+    } catch (err: any) {
+      setError(err.message || 'Failed to cancel appointment');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -112,7 +112,17 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
           {existingAppointment ? 'Your Appointment' : 'Book an Appointment'}
         </h2>
 
-        {existingAppointment ? (
+        {error && (
+          <div className="error-message">
+            <p>{error}</p>
+          </div>
+        )}
+
+        {isLoading ? (
+          <div className="loading-message">
+            <p>Loading...</p>
+          </div>
+        ) : existingAppointment ? (
           <div className="appointment-details">
             <div className="appointment-info">
               <div className="info-content">
@@ -137,13 +147,13 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
 
             <div className="appointment-status">
               <span className="status-label">Status:</span>
-              <span className={`status-badge ${existingAppointment.status}`}>
-                {existingAppointment.status === 'pending' ? 'Pending' : 
-                 existingAppointment.status === 'approved' ? 'Approved' : 'Declined'}
+              <span className={`status-badge ${existingAppointment.status.toLowerCase()}`}>
+                {existingAppointment.status === 'PENDING' ? 'Pending' : 
+                 existingAppointment.status === 'APPROVED' ? 'Approved' : 'Declined'}
               </span>
             </div>
 
-            {existingAppointment.status === 'declined' && (
+            {existingAppointment.status === 'DECLINED' && (
               <div className="declined-notice">
                 <p><strong>Your appointment request was declined.</strong></p>
                 <p>For further details, please contact us:</p>
@@ -152,15 +162,19 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
               </div>
             )}
 
-            {existingAppointment.status === 'approved' && (
+            {existingAppointment.status === 'APPROVED' && (
               <div className="approved-notice">
                 <p>✓ Your appointment has been confirmed!</p>
                 <p>We'll contact you at: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>
               </div>
             )}
 
-            <button className="cancel-btn" onClick={handleCancel}>
-              Cancel Appointment
+            <button 
+              className="cancel-btn" 
+              onClick={handleCancel}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Cancelling...' : 'Cancel Appointment'}
             </button>
           </div>
         ) : (

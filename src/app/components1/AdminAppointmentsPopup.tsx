@@ -2,93 +2,70 @@
 
 import { useState, useEffect } from 'react';
 import './AdminAppointmentsPopup.css';
-
-interface AppointmentData {
-  id: string;
-  userName: string;
-  userEmail: string;
-  date: string;
-  time: string;
-  reason: string;
-  status: 'pending' | 'approved' | 'declined';
-  bookedAt: string;
-}
+import { getAllAppointments, approveAppointment, declineAppointment } from '@/actions/appointments';
+import type { AppointmentData } from '@/actions/appointments';
 
 interface AdminAppointmentsPopupProps {
   onClose: () => void;
 }
 
-// Dummy contact details
+// Contact details
 const CONTACT_EMAIL = "kgh.appointments@example.com";
 const CONTACT_PHONE = "+1 (555) 123-4567";
 
 export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPopupProps) {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
-  const [filter, setFilter] = useState<'all' | 'pending' | 'approved' | 'declined'>('pending');
+  const [filter, setFilter] = useState<'all' | 'PENDING' | 'APPROVED' | 'DECLINED'>('PENDING');
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [processingId, setProcessingId] = useState<string | null>(null);
 
   useEffect(() => {
     loadAppointments();
   }, []);
 
-  const loadAppointments = () => {
-    // Load appointments from localStorage
-    // In production, this would be an API call
-    const stored = localStorage.getItem('admin_appointments');
-    if (stored) {
-      setAppointments(JSON.parse(stored));
-    } else {
-      // Generate some dummy appointments for demonstration
-      const dummyAppointments: AppointmentData[] = [
-        {
-          id: '1',
-          userName: 'John Doe',
-          userEmail: 'john.doe@example.com',
-          date: '2025-10-15',
-          time: '10:00',
-          reason: 'Product inquiry and demonstration',
-          status: 'pending',
-          bookedAt: new Date().toISOString(),
-        },
-        {
-          id: '2',
-          userName: 'Jane Smith',
-          userEmail: 'jane.smith@example.com',
-          date: '2025-10-16',
-          time: '14:30',
-          reason: 'License application assistance',
-          status: 'pending',
-          bookedAt: new Date().toISOString(),
-        },
-        {
-          id: '3',
-          userName: 'Mike Johnson',
-          userEmail: 'mike.j@example.com',
-          date: '2025-10-14',
-          time: '11:00',
-          reason: 'Custom order consultation',
-          status: 'approved',
-          bookedAt: new Date(Date.now() - 86400000).toISOString(),
-        },
-      ];
-      localStorage.setItem('admin_appointments', JSON.stringify(dummyAppointments));
-      setAppointments(dummyAppointments);
+  const loadAppointments = async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      const data = await getAllAppointments();
+      setAppointments(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load appointments');
+      console.error('Error loading appointments:', err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleApprove = (appointmentId: string) => {
-    const updated = appointments.map(apt =>
-      apt.id === appointmentId ? { ...apt, status: 'approved' as const } : apt
-    );
-    setAppointments(updated);
-    localStorage.setItem('admin_appointments', JSON.stringify(updated));
+  const handleApprove = async (appointmentId: string) => {
+    try {
+      setProcessingId(appointmentId);
+      setError(null);
+      const updated = await approveAppointment(appointmentId);
+      setAppointments(prev => 
+        prev.map(apt => apt.id === appointmentId ? updated : apt)
+      );
+    } catch (err: any) {
+      setError(err.message || 'Failed to approve appointment');
+    } finally {
+      setProcessingId(null);
+    }
   };
 
-  const handleDecline = (appointmentId: string) => {
-    const updated = appointments.map(apt =>
-      apt.id === appointmentId ? { ...apt, status: 'declined' as const } : apt
-    );
-    setAppointments(updated);
-    localStorage.setItem('admin_appointments', JSON.stringify(updated));
+  const handleDecline = async (appointmentId: string) => {
+    try {
+      setProcessingId(appointmentId);
+      setError(null);
+      const updated = await declineAppointment(appointmentId);
+      setAppointments(prev => 
+        prev.map(apt => apt.id === appointmentId ? updated : apt)
+      );
+    } catch (err: any) {
+      setError(err.message || 'Failed to decline appointment');
+    } finally {
+      setProcessingId(null);
+    }
   };
 
   const formatDate = (dateString: string) => {
@@ -113,9 +90,9 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
     filter === 'all' ? true : apt.status === filter
   );
 
-  const pendingCount = appointments.filter(apt => apt.status === 'pending').length;
-  const approvedCount = appointments.filter(apt => apt.status === 'approved').length;
-  const declinedCount = appointments.filter(apt => apt.status === 'declined').length;
+  const pendingCount = appointments.filter(apt => apt.status === 'PENDING').length;
+  const approvedCount = appointments.filter(apt => apt.status === 'APPROVED').length;
+  const declinedCount = appointments.filter(apt => apt.status === 'DECLINED').length;
 
   return (
     <div className="admin-appointments-overlay" onClick={onClose}>
@@ -132,6 +109,13 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
           </div>
         </div>
 
+        {error && (
+          <div className="admin-error-message">
+            <p>{error}</p>
+            <button onClick={loadAppointments} className="retry-btn">Retry</button>
+          </div>
+        )}
+
         {/* Filter Tabs */}
         <div className="filter-tabs">
           <button
@@ -141,20 +125,20 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
             All ({appointments.length})
           </button>
           <button
-            className={`filter-tab ${filter === 'pending' ? 'active' : ''}`}
-            onClick={() => setFilter('pending')}
+            className={`filter-tab ${filter === 'PENDING' ? 'active' : ''}`}
+            onClick={() => setFilter('PENDING')}
           >
             Pending ({pendingCount})
           </button>
           <button
-            className={`filter-tab ${filter === 'approved' ? 'active' : ''}`}
-            onClick={() => setFilter('approved')}
+            className={`filter-tab ${filter === 'APPROVED' ? 'active' : ''}`}
+            onClick={() => setFilter('APPROVED')}
           >
             Approved ({approvedCount})
           </button>
           <button
-            className={`filter-tab ${filter === 'declined' ? 'active' : ''}`}
-            onClick={() => setFilter('declined')}
+            className={`filter-tab ${filter === 'DECLINED' ? 'active' : ''}`}
+            onClick={() => setFilter('DECLINED')}
           >
             Declined ({declinedCount})
           </button>
@@ -162,20 +146,26 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
 
         {/* Appointments List */}
         <div className="appointments-list">
+          {isLoading ? (
+            <div className="admin-loading-message">
+              <p>Loading appointments...</p>
+            </div>
+          ) : (
+            <>
           {filteredAppointments.length === 0 ? (
             <div className="no-appointments">
               <p>No {filter !== 'all' ? filter : ''} appointments found.</p>
             </div>
           ) : (
             filteredAppointments.map((appointment) => (
-              <div key={appointment.id} className={`appointment-card ${appointment.status}`}>
+              <div key={appointment.id} className={`appointment-card ${appointment.status.toLowerCase()}`}>
                 <div className="appointment-card-header">
                   <div className="user-info">
-                    <h3>{appointment.userName}</h3>
-                    <p className="user-email">{appointment.userEmail}</p>
+                    <h3>{appointment.user.name || 'Unknown User'}</h3>
+                    <p className="user-email">{appointment.user.email}</p>
                   </div>
-                  <span className={`status-badge ${appointment.status}`}>
-                    {appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}
+                  <span className={`status-badge ${appointment.status.toLowerCase()}`}>
+                    {appointment.status.charAt(0) + appointment.status.slice(1).toLowerCase()}
                   </span>
                 </div>
 
@@ -194,24 +184,26 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
                   </div>
                 </div>
 
-                {appointment.status === 'pending' && (
+                {appointment.status === 'PENDING' && (
                   <div className="appointment-card-actions">
                     <button
                       className="action-btn approve-btn"
                       onClick={() => handleApprove(appointment.id)}
+                      disabled={processingId === appointment.id}
                     >
-                      Approve
+                      {processingId === appointment.id ? 'Processing...' : 'Approve'}
                     </button>
                     <button
                       className="action-btn decline-btn"
                       onClick={() => handleDecline(appointment.id)}
+                      disabled={processingId === appointment.id}
                     >
-                      Decline
+                      {processingId === appointment.id ? 'Processing...' : 'Decline'}
                     </button>
                   </div>
                 )}
 
-                {appointment.status === 'declined' && (
+                {appointment.status === 'DECLINED' && (
                   <div className="declined-message">
                     <p><strong>Note:</strong> For further details, please contact us at:</p>
                     <p>Email: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
@@ -219,7 +211,7 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
                   </div>
                 )}
 
-                {appointment.status === 'approved' && (
+                {appointment.status === 'APPROVED' && (
                   <div className="approved-message">
                     <p>✓ Appointment confirmed. Customer will be notified.</p>
                     <p className="contact-note">Contact: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>
@@ -227,6 +219,8 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
                 )}
               </div>
             ))
+          )}
+          </>
           )}
         </div>
       </div>
