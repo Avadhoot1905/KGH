@@ -89,8 +89,8 @@ model Product {
   type            Type        @relation(fields: [typeId], references: [id])
   wishlistItems   Wishlist[]
   reviews         Review[]
-  Product_A       Product[]   @relation("RelatedProducts")
-  Product_B       Product[]   @relation("RelatedProducts")
+  relatedProducts Product[]   @relation("RelatedProducts")
+  relatedTo       Product[]   @relation("RelatedProducts")
   viewedBy        User[]      @relation("ViewedBy")
 }
 
