@@ -6,6 +6,7 @@ import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
 import { useEffect, useMemo, useState } from 'react';
 import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
+import Image from 'next/image';
 
 interface CartItem {
   id: string | number;
@@ -57,7 +58,9 @@ export default function Cart() {
             ) : (
             cartItems.map((item) => (
               <div key={item.id} className="cart-item">
-                <img src={item.image} alt={item.name} className="cart-item-img" />
+                <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
+                  <Image src={item.image} alt={item.name} className="cart-item-img" fill style={{ objectFit: 'cover' }} />
+                </div>
 
                 <div className="cart-item-details">
                   <h3>{item.name}</h3>
@@ -67,7 +70,7 @@ export default function Cart() {
                     <div className="quantity-controls">
                       <button
                         onClick={async () => {
-                          const res = await updateCartItemQuantity(String(item.id), -1);
+                          await updateCartItemQuantity(String(item.id), -1);
                           setCartItems((prev) => {
                             const next = prev.map((p) =>
                               p.id === item.id ? { ...p, quantity: Math.max(0, p.quantity - 1) } : p
@@ -79,7 +82,7 @@ export default function Cart() {
                       <span>{item.quantity}</span>
                       <button
                         onClick={async () => {
-                          const res = await updateCartItemQuantity(String(item.id), 1);
+                          await updateCartItemQuantity(String(item.id), 1);
                           setCartItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, quantity: p.quantity + 1 } : p)));
                         }}
                       >+</button>

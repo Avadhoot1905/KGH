@@ -5,6 +5,7 @@ import Footer from "@/app/components1/Footer";
 import "./wishlist.css";
 import { getMyWishlistItems, moveWishlistItemToCart, removeFromMyWishlist, moveAllWishlistToCart, getWishlistRecommendations } from "@/actions/wishlist";
 import Link from "next/link";
+import Image from "next/image";
 
 interface WishlistItem {
   id: string;
@@ -76,7 +77,9 @@ export default function WishlistPage() {
           ) : (
           wishlist.map((item) => (
             <div key={item.id} className="wishlist-card">
-              <img src={item.img} alt={item.name} className="wishlist-img" />
+              <div style={{ position: 'relative', width: '100%', height: '200px' }}>
+                <Image src={item.img} alt={item.name} className="wishlist-img" fill style={{ objectFit: 'cover' }} />
+              </div>
               {item.tag && <span className="wishlist-tag">{item.tag}</span>}
               <h3 className="wishlist-title">{item.name}</h3>
               <p className="wishlist-price">{item.price}</p>
@@ -121,7 +124,9 @@ export default function WishlistPage() {
               {recommendations.map((rec) => (
                 <Link href={`/ProductDetail/${rec.id}`} key={rec.id} style={{ textDecoration: 'none' }}>
                   <div className="recommend-card">
-                    <img src={rec.img} alt={rec.name} className="recommend-img" />
+                    <div style={{ position: 'relative', width: '100%', height: '150px' }}>
+                      <Image src={rec.img} alt={rec.name} className="recommend-img" fill style={{ objectFit: 'cover' }} />
+                    </div>
                     <h4>{rec.name}</h4>
                     <p className="recommend-meta">{rec.brand} • {rec.type}</p>
                     <p className="recommend-price">{rec.price}</p>

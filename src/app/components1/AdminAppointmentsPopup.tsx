@@ -30,8 +30,8 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
       setError(null);
       const data = await getAllAppointments();
       setAppointments(data);
-    } catch (err: any) {
-      setError(err.message || 'Failed to load appointments');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to load appointments');
       console.error('Error loading appointments:', err);
     } finally {
       setIsLoading(false);
@@ -46,8 +46,8 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
       setAppointments(prev => 
         prev.map(apt => apt.id === appointmentId ? updated : apt)
       );
-    } catch (err: any) {
-      setError(err.message || 'Failed to approve appointment');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to approve appointment');
     } finally {
       setProcessingId(null);
     }
@@ -61,8 +61,8 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
       setAppointments(prev => 
         prev.map(apt => apt.id === appointmentId ? updated : apt)
       );
-    } catch (err: any) {
-      setError(err.message || 'Failed to decline appointment');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to decline appointment');
     } finally {
       setProcessingId(null);
     }

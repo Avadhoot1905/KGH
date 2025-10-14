@@ -5,6 +5,7 @@ import Footer from "../components1/Footer";
 import Filters from "./Filters";
 import { getProducts, getFilterOptions, type ProductListItem } from "@/actions/products";
 import Link from "next/link";
+import Image from "next/image";
 
 function formatINR(amount: number) {
   try {
@@ -63,7 +64,9 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                     </span>
                   )}
                   {primaryPhoto ? (
-                    <img src={primaryPhoto.url} alt={primaryPhoto.alt ?? product.name} />
+                    <div style={{ position: 'relative', width: '100%', height: '180px' }}>
+                      <Image src={primaryPhoto.url} alt={primaryPhoto.alt ?? product.name} fill style={{ objectFit: 'cover' }} />
+                    </div>
                   ) : (
                     <div style={{ height: 180 }} />
                   )}

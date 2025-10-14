@@ -47,8 +47,8 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
       dialogRef.current?.close();
       (event.target as HTMLFormElement).reset();
       // Optimistic: rely on page revalidation to refresh list
-    } catch (e: any) {
-      setError(e?.message || "Failed to create product");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to create product");
     } finally {
       setPending(false);
     }

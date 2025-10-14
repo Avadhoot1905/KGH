@@ -78,6 +78,24 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return [];
 
+  type PrismaOrder = {
+    id: string;
+    status: string;
+    total: number;
+    createdAt: Date;
+    updatedAt: Date;
+    items: Array<{
+      id: string;
+      quantity: number;
+      price: number;
+      product: {
+        id: string;
+        name: string;
+        photos: Array<{ url: string; isPrimary: boolean }>;
+      };
+    }>;
+  };
+
   const orders = await (prisma as any).order.findMany({
     where: {
       userId: user.id,
@@ -98,13 +116,13 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
       }
     },
     orderBy: { createdAt: "desc" },
-  });
+  }) as PrismaOrder[];
 
-  return orders.map((order: any) => ({
+  return orders.map((order: PrismaOrder) => ({
     id: order.id,
     status: order.status,
     total: `₹${Math.round(order.total).toLocaleString("en-IN")}`,
-    items: order.items.map((item: any) => ({
+    items: order.items.map((item) => ({
       id: item.id,
       quantity: item.quantity,
       price: item.price,

@@ -90,8 +90,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       await updateProductAction(product.id, formData);
       dialogRef.current?.close();
       router.refresh();
-    } catch (e: any) {
-      setError(e?.message || "Failed to update product");
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to update product");
     } finally {
       setPending(false);
     }
@@ -173,8 +173,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
                   await deleteProductAction(product.id);
                   setShowConfirmDelete(false);
                   router.refresh();
-                } catch (e: any) {
-                  setError(e?.message || "Failed to delete product");
+                } catch (e: unknown) {
+                  setError(e instanceof Error ? e.message : "Failed to delete product");
                   setShowConfirmDelete(false);
                 }
               }}
@@ -271,19 +271,4 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       </dialog>
     </div>
   );
-}
-
-function CountdownEffect({ countdown, onExpired, setCountdown }: { countdown: number; onExpired: () => void; setCountdown: (v: number | null) => void; }) {
-  useEffect(() => {
-    if (countdown === null) return;
-    if (countdown <= 0) {
-      onExpired();
-      return;
-    }
-    const t = setTimeout(() => {
-      setCountdown(countdown - 1);
-    }, 1000);
-    return () => clearTimeout(t);
-  }, [countdown, onExpired, setCountdown]);
-  return null;
 }

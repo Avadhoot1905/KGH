@@ -7,6 +7,7 @@ import WishlistButton from "../components1/WishlistButton";
 import ShareButton from "../components1/ShareButton";
 import { getProductById, getRelatedProductsWithDetails } from "@/actions/products";
 import Link from "next/link";
+import Image from "next/image";
 
 function formatINR(amount: number) {
   try {
@@ -51,7 +52,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
           {/* Product Gallery */}
           <div className="product-gallery">
             {primaryPhoto ? (
-              <img className="main-image" src={primaryPhoto.url} alt={primaryPhoto.alt ?? product.name} />
+              <div style={{ position: 'relative', width: '100%', height: '500px' }}>
+                <Image className="main-image" src={primaryPhoto.url} alt={primaryPhoto.alt ?? product.name} fill style={{ objectFit: 'contain' }} />
+              </div>
             ) : null}
           </div>
 
@@ -107,7 +110,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                   <Link href={`/ProductDetail/${relatedProduct.id}`} key={relatedProduct.id} style={{ textDecoration: 'none' }}>
                     <div className="product-card">
                       {relatedPrimaryPhoto ? (
-                        <img src={relatedPrimaryPhoto.url} alt={relatedPrimaryPhoto.alt ?? relatedProduct.name} />
+                        <div style={{ position: 'relative', width: '100%', height: '150px' }}>
+                          <Image src={relatedPrimaryPhoto.url} alt={relatedPrimaryPhoto.alt ?? relatedProduct.name} fill style={{ objectFit: 'cover' }} />
+                        </div>
                       ) : (
                         <div style={{ width: '100%', height: '150px', background: '#333', borderRadius: '8px' }} />
                       )}

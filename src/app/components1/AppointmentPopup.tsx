@@ -55,8 +55,8 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
 
       setExistingAppointment(appointment);
       setFormData({ date: '', time: '', reason: '' });
-    } catch (err: any) {
-      setError(err.message || 'Failed to create appointment');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to create appointment');
     } finally {
       setIsSubmitting(false);
     }
@@ -71,8 +71,8 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
       setIsSubmitting(true);
       await cancelAppointment();
       setExistingAppointment(null);
-    } catch (err: any) {
-      setError(err.message || 'Failed to cancel appointment');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to cancel appointment');
     } finally {
       setIsSubmitting(false);
     }

@@ -287,13 +287,28 @@ export async function updateProductAction(
   const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
-  const data: any = {};
+  type UpdateData = {
+    name?: string;
+    description?: string;
+    price?: number;
+    quantity?: number;
+    licenseRequired?: boolean;
+    tag?: "NEW" | "TOP_SELLER" | null;
+    brand?: { connect: { id: string } };
+    type?: { connect: { id: string } };
+    caliber?: { connect: { id: string } };
+    category?: { connect: { id: string } };
+    relatedProducts?: { set: Array<{ id: string }> };
+    photos?: { create: { url: string; alt?: string | null; isPrimary: boolean } };
+  };
+
+  const data: UpdateData = {};
   if (typeof name === "string") data.name = name;
   if (typeof description === "string") data.description = description;
   if (typeof priceStr === "string" && priceStr.trim() !== "") data.price = Number(priceStr);
   if (typeof quantityStr === "string" && quantityStr.trim() !== "") data.quantity = Number(quantityStr);
   if (typeof licenseRequiredStr === "string") data.licenseRequired = licenseRequiredStr === "on" || licenseRequiredStr === "true";
-  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as any; else if (tag === "") data.tag = null;
+  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as "NEW" | "TOP_SELLER"; else if (tag === "") data.tag = null;
 
   if (brandId) data.brand = { connect: { id: brandId } };
   if (typeId) data.type = { connect: { id: typeId } };
@@ -423,13 +438,28 @@ export async function createProductAction(formData: FormData) {
   if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
   if (!Number.isInteger(quantity) || quantity < 0) throw new Error("Invalid quantity");
 
-  const createData: any = {
+  type CreateData = {
+    name: string;
+    description: string;
+    price: number;
+    quantity: number;
+    licenseRequired: boolean;
+    tag?: "NEW" | "TOP_SELLER";
+    brand: { connect: { id: string } };
+    type: { connect: { id: string } };
+    caliber: { connect: { id: string } };
+    category: { connect: { id: string } };
+    relatedProducts?: { connect: Array<{ id: string }> };
+    photos?: { create: { url: string; alt?: string | null; isPrimary: boolean } };
+  };
+
+  const createData: CreateData = {
     name,
     description,
     price,
     quantity,
     licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
-    tag: tag ? (tag as any) : undefined,
+    tag: tag ? (tag as "NEW" | "TOP_SELLER") : undefined,
     brand: { connect: { id: brandId } },
     type: { connect: { id: typeId } },
     caliber: { connect: { id: caliberId } },
@@ -449,10 +479,11 @@ export async function createProductAction(formData: FormData) {
   // Handle optional image upload
   let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
   if (photoFile && typeof photoFile === "object" && "arrayBuffer" in photoFile) {
-    const bytes = Buffer.from(await (photoFile as any).arrayBuffer());
+    const file = photoFile as File;
+    const bytes = Buffer.from(await file.arrayBuffer());
     const uploadsDir = path.join(process.cwd(), "public", "uploads");
     await fs.mkdir(uploadsDir, { recursive: true });
-    const safeName = `${Date.now()}_${((photoFile as any).name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+    const safeName = `${Date.now()}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
     const filePath = path.join(uploadsDir, safeName);
     await fs.writeFile(filePath, bytes);
     const publicUrl = `/uploads/${safeName}`;
