@@ -165,7 +165,7 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
             {existingAppointment.status === 'APPROVED' && (
               <div className="approved-notice">
                 <p>✓ Your appointment has been confirmed!</p>
-                <p>We'll contact you at: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>
+                <p>We&apos;ll contact you at: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>
               </div>
             )}
 

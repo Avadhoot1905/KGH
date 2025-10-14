@@ -6,7 +6,6 @@ import { authOptions } from "@/auth";
 
 let prisma: PrismaClient;
 declare global {
-  // eslint-disable-next-line no-var
   var __PRISMA__: PrismaClient | undefined;
 }
 
@@ -96,6 +95,7 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
     }>;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const orders = await (prisma as any).order.findMany({
     where: {
       userId: user.id,
@@ -174,6 +174,7 @@ export async function createOrderFromCart() {
 
     const total = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const order = await (prisma as any).order.create({
       data: {
         userId: user.id,

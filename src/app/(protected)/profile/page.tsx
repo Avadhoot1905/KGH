@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Settings, Heart, RotateCcw, LogOut, Lock, Edit } from "lucide-react";
+import { Heart, RotateCcw, LogOut, Lock, Edit } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import { getCurrentUser, type CurrentUser } from "@/actions/auth";
-import { getOrdersByStatus, getAllOrders, updateUserProfile, changePassword, type OrderListItem } from "@/actions/profile";
+import { getAllOrders, updateUserProfile, changePassword, type OrderListItem } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
 
 export default function ProfilePage() {

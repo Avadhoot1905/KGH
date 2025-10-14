@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
@@ -12,7 +12,7 @@ type AddToCartButtonProps = {
   className?: string;
 };
 
-export default function AddToCartButton({ productId, disabled, className = "red" }: AddToCartButtonProps) {
+function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToCartButtonProps) {
   const [adding, setAdding] = useState(false);
   const [added, setAdded] = useState(false);
   const pathname = usePathname();
@@ -48,6 +48,14 @@ export default function AddToCartButton({ productId, disabled, className = "red"
       </button>
       <Link href="/Cart" className="outline">Go to Cart</Link>
     </div>
+  );
+}
+
+export default function AddToCartButton(props: AddToCartButtonProps) {
+  return (
+    <Suspense fallback={<button className={props.className} disabled>Loading...</button>}>
+      <AddToCartButtonInner {...props} />
+    </Suspense>
   );
 }
 

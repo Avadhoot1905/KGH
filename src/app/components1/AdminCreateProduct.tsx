@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useEffect, FormEvent } from "react";
+import { useRef, useState, FormEvent } from "react";
 import { createProductAction, getAllProductsForSelector } from "@/actions/products";
 import RelatedProductsSelector from "./RelatedProductsSelector";
 

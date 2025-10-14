@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import AuthPopup from "../components1/AuthPopup";
 import { getGoogleSignInUrl } from "@/actions/auth";
 
-export default function ClientAuthPopup() {
+function ClientAuthPopupInner() {
   const [open, setOpen] = useState(false);
   const [googleUrl, setGoogleUrl] = useState("");
   const pathname = usePathname();
@@ -34,6 +34,14 @@ export default function ClientAuthPopup() {
       onClose={() => setOpen(false)}
       googleSignInUrl={googleUrl}
     />
+  );
+}
+
+export default function ClientAuthPopup() {
+  return (
+    <Suspense fallback={null}>
+      <ClientAuthPopupInner />
+    </Suspense>
   );
 }
 

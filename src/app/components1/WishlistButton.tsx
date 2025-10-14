@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
@@ -12,7 +12,7 @@ type WishlistButtonProps = {
   className?: string;
 };
 
-export default function WishlistButton({ productId, isWishlisted = false, className = "outline" }: WishlistButtonProps) {
+function WishlistButtonInner({ productId, isWishlisted = false, className = "outline" }: WishlistButtonProps) {
   const [wishlisted, setWishlisted] = useState(isWishlisted);
   const [saving, setSaving] = useState(false);
   const pathname = usePathname();
@@ -47,6 +47,14 @@ export default function WishlistButton({ productId, isWishlisted = false, classN
       </button>
       <Link href="/Wishlist" className="outline">View Wishlist</Link>
     </div>
+  );
+}
+
+export default function WishlistButton(props: WishlistButtonProps) {
+  return (
+    <Suspense fallback={<button className={props.className} disabled>Loading...</button>}>
+      <WishlistButtonInner {...props} />
+    </Suspense>
   );
 }
 

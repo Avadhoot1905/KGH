@@ -31,7 +31,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       .then((products) => {
         setAllProducts(products);
       })
-      .catch((e) => {
+      .catch(() => {
         setError("Failed to load products");
       })
       .finally(() => {

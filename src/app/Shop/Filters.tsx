@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { Suspense } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 type Option = { id: string; name: string };
@@ -10,7 +10,7 @@ type Props = {
   types: Option[];
 };
 
-export default function Filters({ brands, types }: Props) {
+function FiltersInner({ brands, types }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -106,6 +106,14 @@ export default function Filters({ brands, types }: Props) {
         </select>
       </div>
     </aside>
+  );
+}
+
+export default function Filters(props: Props) {
+  return (
+    <Suspense fallback={<aside className="filters"><div>Loading filters...</div></aside>}>
+      <FiltersInner {...props} />
+    </Suspense>
   );
 }
 

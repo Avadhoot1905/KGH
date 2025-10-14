@@ -31,9 +31,7 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   // Lazy import PrismaClient pattern is used in other actions; keep this file light
   const { PrismaClient } = await import("@prisma/client");
   // Reuse global prisma as in other actions to avoid multiple instances in dev
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  const globalAny = global as any;
+  const globalAny = global as { __PRISMA__?: InstanceType<typeof PrismaClient> };
   let prisma = globalAny.__PRISMA__ as InstanceType<typeof PrismaClient> | undefined;
   if (!prisma) {
     prisma = new PrismaClient();
