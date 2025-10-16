@@ -25,12 +25,7 @@ export default function Home() {
         <div className="gun-img"></div>
       </section>
 
-      <section className="filters">
-        <select><option>All Brands</option></select>
-        <select><option>All Types</option></select>
-        <select><option>All Caliber</option></select>
-      </section>
-
+  
       <section className="categories">
         <h2>FEATURED CATEGORIES</h2>
         <div className="category-cards">

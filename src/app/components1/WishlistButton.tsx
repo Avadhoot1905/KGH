@@ -45,7 +45,6 @@ function WishlistButtonInner({ productId, isWishlisted = false, className = "out
       <button className={className} onClick={onToggleWishlist} aria-pressed={wishlisted}>
         {saving ? "Saving..." : wishlisted ? "💖 Wishlisted" : "❤️ Wishlist"}
       </button>
-      <Link href="/Wishlist" className="outline">View Wishlist</Link>
     </div>
   );
 }

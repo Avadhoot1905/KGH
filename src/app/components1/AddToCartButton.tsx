@@ -46,7 +46,6 @@ function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToC
       <button className={className} onClick={handleAdd} disabled={disabled || adding}>
         {adding ? "ADDING..." : added ? "ADDED" : "ADD TO CART"}
       </button>
-      <Link href="/Cart" className="outline">Go to Cart</Link>
     </div>
   );
 }
