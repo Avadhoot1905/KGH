@@ -13,7 +13,13 @@ export default function Home() {
           <p>Premium firearms and tactical gear for the discerning professional</p>
           <div className="buttons">
            <Link href="/Shop"> <button className="red">SHOP NOW</button></Link>
-           <Link href="/ProductDetail"> <button className="white">BROWSE CATEGORIES</button></Link>
+           <a
+              href="https://www.youtube.com/@kathuriagunhousearmsammuna4618"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+            <button className="white">Visit our Youtube Channel</button>
+            </a>
           </div>
         </div>
         <div className="gun-img"></div>

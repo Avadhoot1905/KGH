@@ -30,7 +30,7 @@ export default function Navbar() {
           >
             <FaHeart className="icon" title="Wishlist" />
           </ProtectedLink>
-          <span className="wishlist-count">5</span>
+          {/* <span className="wishlist-count">5</span>*/}
         </div>
 
         {/* Cart */}
@@ -43,7 +43,7 @@ export default function Navbar() {
           >
             <FaShoppingCart className="icon" title="Cart" />
           </ProtectedLink>
-          <span className="cart-count">2</span>
+       {/*   <span className="cart-count">2</span>*/}
         </div>
 
         <ProtectedLink 

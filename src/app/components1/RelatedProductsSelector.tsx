@@ -69,7 +69,7 @@ export default function RelatedProductsSelector({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           onFocus={() => setIsOpen(true)}
-          className="w-full border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]"
+          className="w-full border rounded px-2 py-1.5 bg-[#222] text-white border-[#333] placeholder-gray-400 focus:outline-none focus:ring-1 focus:ring-gray-500"
         />
         {selectedProducts.length > 0 && (
           <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500 dark:text-gray-400">
@@ -104,7 +104,7 @@ export default function RelatedProductsSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-[#111] border border-gray-300 dark:border-[#333] rounded shadow-lg z-50 max-h-64 overflow-y-auto">
+        <div className="absolute top-full left-0 right-0 mt-1 bg-[#222] border border-[#333] rounded shadow-lg z-50 max-h-64 overflow-y-auto text-white">
           {filteredProducts.length === 0 ? (
             <div className="p-3 text-sm text-gray-500 dark:text-gray-400 text-center">
               {searchTerm ? "No products found" : "No products available"}
@@ -113,7 +113,7 @@ export default function RelatedProductsSelector({
             filteredProducts.map((product) => (
               <label
                 key={product.id}
-                className="flex items-center gap-2 px-3 py-2 hover:bg-gray-100 dark:hover:bg-[#222] cursor-pointer text-sm"
+                className="flex items-center gap-2 px-3 py-2 hover:bg-[#222] dark:hover:bg-[#222] cursor-pointer text-sm"
               >
                 <input
                   type="checkbox"

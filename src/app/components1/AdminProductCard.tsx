@@ -98,9 +98,10 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   }
 
   return (
-    <div className="rounded-lg border border-gray-200 dark:border-[#333] shadow-lg p-6 bg-white dark:bg-[#222] transition-colors">
+    <div className="rounded-lg border border-[#333] shadow-lg p-6 bg-[#222] text-white transition-colors">
       <div className="flex gap-6">
-        <div className="relative w-32 h-32 flex-shrink-0 bg-gray-50 dark:bg-[#111] rounded-lg overflow-hidden">
+       <div className="relative w-32 h-32 flex-shrink-0 bg-[#111] rounded-lg overflow-hidden">
+
           {previewUrl ? (
             <Image src={previewUrl} alt={product.name} fill className="object-contain" />
           ) : primaryPhoto ? (
@@ -116,7 +117,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <h3 className="font-bold text-lg truncate text-black dark:text-white" title={product.name}>{product.name}</h3>
+           <h3 className="font-bold text-lg truncate text-white" title={product.name}>{product.name}</h3>
             <span className="text-sm text-gray-500 dark:text-gray-400">{new Date(product.updatedAt).toLocaleDateString()}</span>
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2" title={product.description}>{product.description}</p>
@@ -148,15 +149,14 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         </div>
       </div>
       <div className="flex items-center justify-end gap-2 mt-4">
-        <button
-          className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
-          onClick={openDialog}
-        >
-          Edit
+        <button className="px-3 py-1.5 rounded border text-sm bg-[#111] text-white hover:bg-[#222] transition-colors" 
+        onClick={openDialog} > 
+        Edit 
         </button>
+
         {!showConfirmDelete ? (
           <button
-            className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
+              className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700 transition-colors"
             onClick={() => {
               setError(null);
               setShowConfirmDelete(true);
@@ -182,7 +182,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               Confirm Delete
             </button>
             <button
-              className="px-3 py-1.5 rounded border text-sm bg-white dark:bg-[#111] dark:text-white hover:bg-gray-50 dark:hover:bg-[#222]"
+              className="px-3 py-1.5 rounded border text-sm bg-[#111] text-white hover:bg-[#222] transition-colors"
               onClick={() => setShowConfirmDelete(false)}
             >
               Cancel
@@ -193,7 +193,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
 
 
 
-      <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl">
+      <dialog ref={dialogRef} className="rounded-lg p-0 w-full max-w-2xl bg-[#222] text-white">
         <form onSubmit={onSubmit} className="p-6" encType="multipart/form-data">
           <div className="flex items-start justify-between mb-4">
             <h2 className="text-lg font-semibold">Edit Product</h2>
@@ -262,7 +262,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
           </div>
 
           <div className="flex items-center justify-end gap-2 mt-6">
-            <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border bg-white text-sm">Cancel</button>
+            <button type="button" onClick={() => dialogRef.current?.close()} className="px-3 py-1.5 rounded border text-sm bg-[#111] text-white hover:bg-[#333] transition-colors">Cancel</button>
             <button type="submit" disabled={pending} className="px-3 py-1.5 rounded bg-black text-white text-sm">
               {pending ? "Saving..." : "Save"}
             </button>

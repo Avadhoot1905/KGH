@@ -145,7 +145,7 @@ export default function ProfilePage() {
 
         {/* Buttons */}
         <div className="mt-6 w-full space-y-3">
-          <button 
+        {/*  <button 
             onClick={handleEditProfile}
             className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-medium"
           >
@@ -164,7 +164,7 @@ export default function ProfilePage() {
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
           >
             <Lock size={16} /> Change Password
-          </button>
+          </button>*/}
           <button 
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"

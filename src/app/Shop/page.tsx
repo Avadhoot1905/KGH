@@ -73,7 +73,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<Rec
                   <h4>{product.name}</h4>
                   <p>{subtitle}</p>
                   <h3>{formatINR(product.price)}</h3>
-                  <button className="add-to-cart">ADD TO CART</button>
+                  <button className="add-to-cart">View Product</button>
                 </Link>
               );
             })}

@@ -50,7 +50,7 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
     });
   }, [products, searchQuery]);
   return (
-    <main className="min-h-screen bg-[#0f0f0f] text-white font-sans px-4 py-8">
+    <main className="min-h-screen bg-[#0f0f0f] text-white font-sans px-4 py-8 dark:bg-[#0f0f0f] dark:text-white">
       {/* Header Section */}
       <div className="flex items-center justify-between mb-8 border-b border-[#333] pb-4">
         <div>
