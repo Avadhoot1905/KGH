@@ -7,7 +7,7 @@ import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import { getCurrentUser, type CurrentUser } from "@/actions/auth";
-import { getAllOrders, updateUserProfile, changePassword, type OrderListItem } from "@/actions/profile";
+import { getAllOrders, type OrderListItem } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
 
 export default function ProfilePage() {
@@ -17,23 +17,13 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", phoneNumber: "", contact: "" });
-
+  
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
         const userData = await getCurrentUser();
         setUser(userData);
-        if (userData) {
-          setEditForm({
-            name: userData.name || "",
-            phoneNumber: userData.phoneNumber || "",
-            contact: userData.contact || "",
-          });
-        }
-
         const ordersData = await getAllOrders();
         setOrders(ordersData);
 
@@ -82,66 +72,9 @@ export default function ProfilePage() {
           )}
         </div>
         
-        {editMode ? (
-          <div className="w-full space-y-3 mb-4">
-            <input
-              type="text"
-              value={editForm.name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Full Name"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={editForm.phoneNumber}
-              onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
-              placeholder="Phone Number"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={editForm.contact}
-              onChange={(e) => setEditForm(prev => ({ ...prev, contact: e.target.value }))}
-              placeholder="Contact Info"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-          </div>
-        ) : (
-          <>
-            <h2 className="text-lg font-semibold text-center">{user?.name || "User"}</h2>
-            <p className="text-gray-400 text-sm mb-2 text-center">{user?.email}</p>
-            {user?.phoneNumber && (
-              <p className="text-gray-400 text-sm text-center">{user.phoneNumber}</p>
-            )}
-            <p className="text-gray-400 text-sm mb-6 text-center">
-              Joined: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Recently"}
-            </p>
-          </>
-        )}
-
         {/* Buttons */}
         <div className="mt-6 w-full space-y-3">
-        {/*  <button 
-            onClick={handleEditProfile}
-            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-medium"
-          >
-            <Edit size={16} /> {editMode ? "Save Profile" : "Edit Profile"}
-          </button>
-          {editMode && (
-            <button 
-              onClick={() => setEditMode(false)}
-              className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 py-2 rounded-lg font-medium"
-            >
-              Cancel
-            </button>
-          )}
-          <button 
-            onClick={handleChangePassword}
-            className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
-          >
-            <Lock size={16} /> Change Password
-          </button>*/}
-          <button 
+        <button 
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
           >
