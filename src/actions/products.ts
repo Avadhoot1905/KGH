@@ -268,7 +268,7 @@ export async function updateProductAction(
   // const allowedAdmins = [
   //   "arcsmo19@gmail.com",
   // ];
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com","ojasvikathuria777@gmail.com"]; // keep in sync
 
   if (!allowedAdmins.includes(session.user.email)) {
     throw new Error("Forbidden");
