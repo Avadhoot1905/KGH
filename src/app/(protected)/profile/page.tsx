@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Heart, RotateCcw, LogOut, Lock, Edit } from "lucide-react";
+import { Heart, RotateCcw, LogOut } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
@@ -50,30 +50,6 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" });
-  };
-
-  const handleEditProfile = async () => {
-    if (editMode) {
-      try {
-        const result = await updateUserProfile(editForm);
-        if (result.success) {
-          setUser(prev => prev ? { ...prev, ...editForm } : null);
-          setEditMode(false);
-        } else {
-          alert(result.error || "Failed to update profile");
-        }
-      } catch (error) {
-        console.error("Failed to update profile:", error);
-        alert("Failed to update profile");
-      }
-    } else {
-      setEditMode(true);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    const result = await changePassword();
-    alert(result.error || "Password change is not available for OAuth accounts");
   };
 
   const getFilteredOrders = () => {

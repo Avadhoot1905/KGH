@@ -27,7 +27,7 @@ export default function Footer() {
           <div className="flex justify-center md:justify-end">
             <div className="flex items-center space-x-3 bg-[#0b1220] p-4 rounded-xl shadow-md max-w-sm w-full">
               <img
-                src="/precihole-logo.png"
+                src="/precihole.png"
                 alt="Precihole Authorized Service Centre"
                 className="h-12 w-auto"
               />
