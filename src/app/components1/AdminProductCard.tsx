@@ -4,14 +4,17 @@ import Image from "next/image";
 import { useRef, useState, FormEvent, useEffect } from "react";
 import { ProductListItem } from "@/actions/products";
 import { updateProductAction, deleteProductAction, getAllProductsForSelector } from "@/actions/products";
+import { Category, getAllCategories } from "@/actions/categories";
 import { useRouter } from "next/navigation";
 import RelatedProductsSelector from "./RelatedProductsSelector";
+import CategorySelect from "./CategorySelect";
 
 type AdminProductCardProps = {
   product: ProductListItem;
+  categories: Category[];
 };
 
-export default function AdminProductCard({ product }: AdminProductCardProps) {
+export default function AdminProductCard({ product, categories }: AdminProductCardProps) {
   const primaryPhoto = product.photos.find((p) => p.isPrimary) ?? product.photos[0];
   const dialogRef = useRef<HTMLDialogElement>(null);
   const router = useRouter();
@@ -24,6 +27,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     product.relatedProducts?.map((p) => p.id) || []
   );
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState(product.category?.id || "");
+  const [categoriesList, setCategoriesList] = useState<Category[]>(categories);
 
   useEffect(() => {
     setLoadingProducts(true);
@@ -62,6 +67,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   function openDialog() {
     loadProducts();
     setSelectedRelatedIds(product.relatedProducts?.map((p) => p.id) || []);
+    setSelectedCategoryId(product.category?.id || "");
+    setCategoriesList(categories);
     dialogRef.current?.showModal();
   }
 
@@ -86,6 +93,12 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     setPending(true);
     setError(null);
     const formData = new FormData(event.currentTarget);
+    
+    // Add the selected category ID to the form data
+    if (selectedCategoryId) {
+      formData.set("categoryId", selectedCategoryId);
+    }
+    
     try {
       await updateProductAction(product.id, formData);
       dialogRef.current?.close();
@@ -95,6 +108,12 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     } finally {
       setPending(false);
     }
+  }
+
+  async function handleCategoryCreated() {
+    // Refresh categories list after creating a new one
+    const updatedCategories = await getAllCategories();
+    setCategoriesList(updatedCategories);
   }
 
   return (
@@ -244,8 +263,14 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               <input name="caliberId" placeholder={product.caliber?.name} className="border rounded px-2 py-1.5" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Category Id</span>
-              <input name="categoryId" placeholder={product.category?.name} className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600">Category</span>
+              <CategorySelect
+                categories={categoriesList}
+                value={selectedCategoryId}
+                onChange={setSelectedCategoryId}
+                onCategoryCreated={handleCategoryCreated}
+              />
+              <input type="hidden" name="categoryId" value={selectedCategoryId} />
             </label>
             <div className="md:col-span-2">
               {loadingProducts ? (

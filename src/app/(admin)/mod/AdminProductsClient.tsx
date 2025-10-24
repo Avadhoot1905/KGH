@@ -1,6 +1,7 @@
 "use client";
 
 import { ProductListItem } from "@/actions/products";
+import { Category } from "@/actions/categories";
 import dynamic from "next/dynamic";
 import { useState, useMemo } from "react";
 
@@ -26,9 +27,10 @@ const AdminAppointmentsButton = dynamic(() => import("@/app/components1/AdminApp
 
 type AdminProductsClientProps = {
   products: ProductListItem[];
+  categories: Category[];
 };
 
-export default function AdminProductsClient({ products }: AdminProductsClientProps) {
+export default function AdminProductsClient({ products, categories }: AdminProductsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Filter products based on search query
@@ -64,7 +66,10 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
         <div className="flex items-center gap-3">
           <AdminAppointmentsButton />
           <AdminSearchBar onSearch={setSearchQuery} />
-          <AdminCreateProduct buttonClassName="px-3 py-1.5 rounded bg-red-600 text-white text-sm border border-red-600 hover:bg-red-700 transition-colors" />
+          <AdminCreateProduct 
+            categories={categories}
+            buttonClassName="px-3 py-1.5 rounded bg-red-600 text-white text-sm border border-red-600 hover:bg-red-700 transition-colors" 
+          />
         </div>
       </div>
 
@@ -84,7 +89,7 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
       ) : (
         <div className="flex flex-col gap-8">
           {filteredProducts.map((product) => (
-            <AdminProductCard key={product.id} product={product} />
+            <AdminProductCard key={product.id} product={product} categories={categories} />
           ))}
         </div>
       )}
