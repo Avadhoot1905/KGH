@@ -1,13 +1,13 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Heart, RotateCcw, LogOut, Lock, Edit } from "lucide-react";
+import { Heart, RotateCcw, LogOut } from "lucide-react";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import { getCurrentUser, type CurrentUser } from "@/actions/auth";
-import { getAllOrders, updateUserProfile, changePassword, type OrderListItem } from "@/actions/profile";
+import { getAllOrders, type OrderListItem } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
 
 export default function ProfilePage() {
@@ -17,8 +17,6 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistListItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editMode, setEditMode] = useState(false);
-  const [editForm, setEditForm] = useState({ name: "", phoneNumber: "", contact: "" });
 
   useEffect(() => {
     async function fetchData() {
@@ -26,13 +24,6 @@ export default function ProfilePage() {
       try {
         const userData = await getCurrentUser();
         setUser(userData);
-        if (userData) {
-          setEditForm({
-            name: userData.name || "",
-            phoneNumber: userData.phoneNumber || "",
-            contact: userData.contact || "",
-          });
-        }
 
         const ordersData = await getAllOrders();
         setOrders(ordersData);
@@ -50,30 +41,6 @@ export default function ProfilePage() {
 
   const handleLogout = async () => {
     await signOut({ callbackUrl: "/" });
-  };
-
-  const handleEditProfile = async () => {
-    if (editMode) {
-      try {
-        const result = await updateUserProfile(editForm);
-        if (result.success) {
-          setUser(prev => prev ? { ...prev, ...editForm } : null);
-          setEditMode(false);
-        } else {
-          alert(result.error || "Failed to update profile");
-        }
-      } catch (error) {
-        console.error("Failed to update profile:", error);
-        alert("Failed to update profile");
-      }
-    } else {
-      setEditMode(true);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    const result = await changePassword();
-    alert(result.error || "Password change is not available for OAuth accounts");
   };
 
   const getFilteredOrders = () => {
@@ -106,42 +73,14 @@ export default function ProfilePage() {
           )}
         </div>
         
-        {editMode ? (
-          <div className="w-full space-y-3 mb-4">
-            <input
-              type="text"
-              value={editForm.name}
-              onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Full Name"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={editForm.phoneNumber}
-              onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
-              placeholder="Phone Number"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-            <input
-              type="text"
-              value={editForm.contact}
-              onChange={(e) => setEditForm(prev => ({ ...prev, contact: e.target.value }))}
-              placeholder="Contact Info"
-              className="w-full px-3 py-2 bg-gray-800 text-white rounded-lg border border-gray-600 focus:border-red-600 focus:outline-none"
-            />
-          </div>
-        ) : (
-          <>
-            <h2 className="text-lg font-semibold text-center">{user?.name || "User"}</h2>
-            <p className="text-gray-400 text-sm mb-2 text-center">{user?.email}</p>
-            {user?.phoneNumber && (
-              <p className="text-gray-400 text-sm text-center">{user.phoneNumber}</p>
-            )}
-            <p className="text-gray-400 text-sm mb-6 text-center">
-              Joined: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Recently"}
-            </p>
-          </>
+        <h2 className="text-lg font-semibold text-center">{user?.name || "User"}</h2>
+        <p className="text-gray-400 text-sm mb-2 text-center">{user?.email}</p>
+        {user?.phoneNumber && (
+          <p className="text-gray-400 text-sm text-center">{user.phoneNumber}</p>
         )}
+        <p className="text-gray-400 text-sm mb-6 text-center">
+          Joined: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Recently"}
+        </p>
 
         {/* Buttons */}
         <div className="mt-6 w-full space-y-3">

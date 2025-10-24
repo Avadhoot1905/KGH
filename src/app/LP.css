@@ -94,6 +94,20 @@ button.white {
   margin: 0.5rem;
   flex: 1 1 200px;
   border-radius: 8px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: pointer;
+}
+
+.product-card {
+  max-width: 280px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.product-card:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 5px 20px rgba(255, 51, 51, 0.3);
 }
 
 .footer {

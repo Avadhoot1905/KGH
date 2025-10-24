@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import Link from "next/link";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
 import { toggleWishlist as toggleWishlistAction } from "@/actions/wishlist";

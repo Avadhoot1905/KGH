@@ -3,7 +3,11 @@ import './LP.css';
 import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import Link from 'next/link';
-export default function Home() {
+import { getProductsByCategory } from '@/actions/products';
+import Image from 'next/image';
+
+export default async function Home() {
+  const airgunProducts = await getProductsByCategory('airguns', 4);
   return (
     <div className="landing">
       <Navbar />
@@ -38,10 +42,41 @@ export default function Home() {
       <section className="products">
         <h2>FEATURED PRODUCTS</h2>
         <div className="product-grid">
-          <div className="product-card">Glock 19 Gen4</div>
-          <div className="product-card">AR-15 Tactical</div>
-          <div className="product-card">Tactical Scope 4x32</div>
-          <div className="product-card">New PUL Ammo</div>
+          {airgunProducts.length > 0 ? (
+            airgunProducts.map((product) => (
+              <Link 
+                key={product.id} 
+                href={`/ProductDetail/${product.id}`}
+                style={{ textDecoration: 'none', color: 'inherit' }}
+              >
+                <div className="product-card">
+                  {product.photos && product.photos.length > 0 && (
+                    <div style={{ width: '100%', height: '150px', position: 'relative', marginBottom: '1rem' }}>
+                      <Image
+                        src={product.photos.find(p => p.isPrimary)?.url || product.photos[0].url}
+                        alt={product.name}
+                        fill
+                        style={{ objectFit: 'contain' }}
+                      />
+                    </div>
+                  )}
+                  <h3 style={{ fontSize: '1.1rem', marginBottom: '0.5rem' }}>{product.name}</h3>
+                  <p style={{ color: '#ff3333', fontWeight: 'bold', fontSize: '1.2rem' }}>
+                    ₹{product.price.toLocaleString()}
+                  </p>
+                  {product.averageRating && product.averageRating > 0 && (
+                    <p style={{ color: '#ffd700', fontSize: '0.9rem' }}>
+                      ⭐ {product.averageRating.toFixed(1)} ({product.totalReviews} reviews)
+                    </p>
+                  )}
+                </div>
+              </Link>
+            ))
+          ) : (
+            <div className="product-card">
+              <p>No airgun products available at the moment</p>
+            </div>
+          )}
         </div>
       </section>
 

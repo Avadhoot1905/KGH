@@ -504,3 +504,28 @@ export async function createProductAction(formData: FormData) {
   revalidatePath("/mod");
 }
 
+// Get products by category name (public)
+export async function getProductsByCategory(categoryName: string, limit: number = 4): Promise<ProductListItem[]> {
+  if (!categoryName) return [];
+  
+  try {
+    const category = await prisma.category.findUnique({
+      where: { name: categoryName },
+    });
+
+    if (!category) return [];
+
+    const products = await prisma.product.findMany({
+      where: { categoryId: category.id },
+      include: baseInclude,
+      orderBy: { createdAt: "desc" },
+      take: limit,
+    });
+
+    return products as unknown as ProductListItem[];
+  } catch (error) {
+    console.error("Error fetching products by category:", error);
+    return [];
+  }
+}
+
