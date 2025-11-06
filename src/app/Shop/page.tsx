@@ -25,7 +25,11 @@ function formatINR(amount: number) {
 }
 
 export default function Page() {
-  const [filtersData, setFiltersData] = React.useState({
+  const [filtersData, setFiltersData] = React.useState<{
+    brands: { id: string; name: string }[];
+    types: { id: string; name: string }[];
+    products: ProductListItem[];
+  }>({
     brands: [],
     types: [],
     products: [],
