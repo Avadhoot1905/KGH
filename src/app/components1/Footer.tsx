@@ -1,6 +1,5 @@
 import Image from "next/image";
 import { FaFacebookF, FaYoutube } from "react-icons/fa";
-
 export default function Footer() {
   return (
     <footer className="bg-black text-white py-12 px-6 md:px-16">
@@ -27,13 +26,19 @@ export default function Footer() {
           {/* Authorized Logo / Badge */}
           <div className="flex justify-center md:justify-end">
             <div className="flex items-center space-x-3 bg-[#0b1220] p-4 rounded-xl shadow-md max-w-sm w-full">
+<<<<<<< HEAD
               <Image
                 src="/precihole-logo.png"
+=======
+        {/*     <Image
+                src="/precihole1.png"
+>>>>>>> main
                 alt="Precihole Authorized Service Centre"
                 width={48}
                 height={48}
                 className="h-12 w-auto"
-              />
+              />*/}
+
               <div className="text-sm text-gray-400 leading-tight">
                 <p className="font-semibold text-white">
                   Authorized Service Centre
@@ -55,11 +60,6 @@ export default function Footer() {
               <li>
                 <a href="#" className="hover:text-red-400 transition">
                   Who We Are
-                </a>
-              </li>
-              <li>
-                <a href="#" className="hover:text-red-400 transition">
-                  Our Services
                 </a>
               </li>
               <li>

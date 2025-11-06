@@ -17,14 +17,13 @@ export default function ProfilePage() {
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistListItem[]>([]);
   const [loading, setLoading] = useState(true);
-
+  
   useEffect(() => {
     async function fetchData() {
       setLoading(true);
       try {
         const userData = await getCurrentUser();
         setUser(userData);
-
         const ordersData = await getAllOrders();
         setOrders(ordersData);
 
@@ -73,38 +72,9 @@ export default function ProfilePage() {
           )}
         </div>
         
-        <h2 className="text-lg font-semibold text-center">{user?.name || "User"}</h2>
-        <p className="text-gray-400 text-sm mb-2 text-center">{user?.email}</p>
-        {user?.phoneNumber && (
-          <p className="text-gray-400 text-sm text-center">{user.phoneNumber}</p>
-        )}
-        <p className="text-gray-400 text-sm mb-6 text-center">
-          Joined: {user?.createdAt ? new Date(user.createdAt).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "Recently"}
-        </p>
-
         {/* Buttons */}
         <div className="mt-6 w-full space-y-3">
-        {/*  <button 
-            onClick={handleEditProfile}
-            className="w-full flex items-center justify-center gap-2 bg-red-600 hover:bg-red-700 py-2 rounded-lg font-medium"
-          >
-            <Edit size={16} /> {editMode ? "Save Profile" : "Edit Profile"}
-          </button>
-          {editMode && (
-            <button 
-              onClick={() => setEditMode(false)}
-              className="w-full flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 py-2 rounded-lg font-medium"
-            >
-              Cancel
-            </button>
-          )}
-          <button 
-            onClick={handleChangePassword}
-            className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
-          >
-            <Lock size={16} /> Change Password
-          </button>*/}
-          <button 
+        <button 
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
           >
