@@ -165,8 +165,8 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
 }
 
 .checkout-btn:hover {
-/*  background: #b00610;
-*/
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(39,174,96,0.18);
 }
 .continue-btn {
   background: transparent;
@@ -197,7 +197,45 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
     flex-direction: column;
   }
 
+  /* Ensure cart items appear before the summary on mobile */
   .cart-summary {
-    order: -1;
+    order: 2;
+  }
+}
+
+@media (max-width: 768px) {
+  .cart-item {
+    flex-direction: column; /* stack vertically instead of side by side */
+    align-items: flex-start;
+  }
+
+  .cart-item > div:first-child {
+    width: 100%;
+    height: auto;
+    position: relative;
+    margin-bottom: 0.8rem;
+  }
+
+  .cart-item-details {
+    width: 100%;
+  }
+
+  .cart-item-actions {
+    display: flex;
+    flex-direction: column-reverse; /* description ABOVE price */
+    align-items: flex-start;
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .cart-item-price {
+    text-align: left;
+    width: 100%;
+  }
+
+  .delete-icon {
+    position: absolute;
+    top: 10px;
+    right: 10px;
   }
 }

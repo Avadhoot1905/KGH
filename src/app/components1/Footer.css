@@ -10,3 +10,83 @@
 .footer h4 {
   color: red;
 }
+/* ============================= */
+/* 📱 MOBILE RESPONSIVE FOOTER */
+/* ============================= */
+
+@media (max-width: 768px) {
+  footer {
+    padding: 1.5rem;
+    text-align: center;
+  }
+
+  .footer-grid,
+  .max-w-7xl {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    gap: 2rem !important;
+  }
+
+  footer h4 {
+    font-size: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  footer p,
+  footer li,
+  footer a {
+    font-size: 0.9rem;
+    line-height: 1.5;
+  }
+
+  footer ul {
+    padding: 0;
+  }
+
+  footer ul li {
+    list-style: none;
+  }
+
+  footer .flex {
+    justify-content: center !important;
+  }
+
+  footer .bg-gray-800 {
+    padding: 0.5rem;
+  }
+
+  footer .bg-gray-800 svg {
+    width: 18px;
+    height: 18px;
+  }
+
+  footer .text-xs {
+    font-size: 0.75rem;
+    text-align: center;
+  }
+}
+
+@media (max-width: 480px) {
+  footer {
+    padding: 1rem;
+  }
+
+  footer h4 {
+    font-size: 0.95rem;
+  }
+
+  footer p,
+  footer li {
+    font-size: 0.85rem;
+  }
+
+  footer .bg-gray-800 {
+    padding: 0.4rem;
+  }
+
+  footer .bg-gray-800 svg {
+    width: 16px;
+    height: 16px;
+  }
+}

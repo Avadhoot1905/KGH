@@ -8,9 +8,10 @@ type Option = { id: string; name: string };
 type Props = {
   brands: Option[];
   types: Option[];
+  onClose?: () => void;
 };
 
-function FiltersInner({ brands, types }: Props) {
+function FiltersInner({ brands, types, onClose }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -27,7 +28,8 @@ function FiltersInner({ brands, types }: Props) {
     const current = sp.get(key)?.split(",").filter(Boolean) ?? [];
     const exists = current.includes(id);
     const next = exists ? current.filter((x) => x !== id) : [...current, id];
-    if (next.length === 0) sp.delete(key); else sp.set(key, next.join(","));
+    if (next.length === 0) sp.delete(key);
+    else sp.set(key, next.join(","));
     router.push(`${pathname}?${sp.toString()}`);
   };
 
@@ -43,13 +45,16 @@ function FiltersInner({ brands, types }: Props) {
 
   const selectedBrandIds = (params.get("brands") || "").split(",").filter(Boolean);
   const selectedTypeIds = (params.get("types") || "").split(",").filter(Boolean);
-
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
   const sort = params.get("sort") || "relevance";
 
   return (
-    <aside className="sidebar">
+    <div className="filters-inner">
+      {onClose && (
+        <button className="close-btn" onClick={onClose} aria-label="Close filters">✕</button>
+      )}
+
       <h3>FILTERS</h3>
 
       <div className="filter-group">
@@ -60,7 +65,8 @@ function FiltersInner({ brands, types }: Props) {
               type="checkbox"
               checked={selectedBrandIds.includes(b.id)}
               onChange={() => toggleInList("brands", b.id)}
-            /> {b.name}
+            />{" "}
+            {b.name}
           </label>
         ))}
       </div>
@@ -71,9 +77,8 @@ function FiltersInner({ brands, types }: Props) {
           {types.map((t) => (
             <button
               key={t.id}
-              className="pill"
+              className={`pill ${selectedTypeIds.includes(t.id) ? "active" : ""}`}
               onClick={() => toggleInList("types", t.id)}
-              aria-pressed={selectedTypeIds.includes(t.id)}
             >
               {t.name}
             </button>
@@ -105,16 +110,14 @@ function FiltersInner({ brands, types }: Props) {
           <option value="PRICE_DESC">Price: High to Low</option>
         </select>
       </div>
-    </aside>
+    </div>
   );
 }
 
 export default function Filters(props: Props) {
   return (
-    <Suspense fallback={<aside className="filters"><div>Loading filters...</div></aside>}>
+    <Suspense fallback={<div>Loading filters...</div>}>
       <FiltersInner {...props} />
     </Suspense>
   );
 }
-
-
