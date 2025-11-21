@@ -6,11 +6,11 @@ import { Target, Crosshair, Package, Eye, AlertCircle } from 'lucide-react'; // 
 
 export default function Home() {
   const categories = [
-    { name: 'HANDGUNS', sub: '120+ Models', icon: <Target size={40} color="#e63946" /> },
-    { name: 'RIFLES', sub: '85+ Models', icon: <Crosshair size={40} color="#e63946" /> },
-    { name: 'AMMUNITION', sub: '500+ Types', icon: <Package size={40} color="#e63946" /> },
-    { name: 'ACCESSORIES', sub: '300+ Items', icon: <Eye size={40} color="#e63946" /> },
-    { name: 'TACTICAL', sub: '150+ Tools', icon: <AlertCircle size={40} color="#e63946" /> },
+    { name: 'Air Guns', sub: 'Precision & Power', icon: <Target size={40} color="#e63946" /> },
+    { name: 'Ammunition', sub: '500+ Types', icon: <Package size={40} color="#e63946" /> },
+    { name: 'Accessories', sub: '300+ Items', icon: <Eye size={40} color="#e63946" /> },
+    { name: 'Firearms', sub: '120+ Models', icon: <Crosshair size={40} color="#e63946" /> },
+    { name: 'Tactical', sub: '150+ Tools', icon: <AlertCircle size={40} color="#e63946" /> },
   ];
 
   return (
@@ -44,11 +44,13 @@ export default function Home() {
         <h2>FEATURED CATEGORIES</h2>
         <div className="category-cards">
           {categories.map((cat, i) => (
-            <div key={i} className="card">
-              <div className="icon">{cat.icon}</div>
-              <h3>{cat.name}</h3>
-              <p>{cat.sub}</p>
-            </div>
+            <Link key={i} href={`/Shop?category=${encodeURIComponent(cat.name)}`}>
+              <div className="card">
+                <div className="icon">{cat.icon}</div>
+                <h3>{cat.name}</h3>
+                <p>{cat.sub}</p>
+              </div>
+            </Link>
           ))}
         </div>
       </section>

@@ -10,6 +10,7 @@ import {
   getProducts,
   getFilterOptions,
   type ProductListItem,
+  type FilterOptions,
 } from "@/actions/products";
 
 function formatINR(amount: number) {
@@ -25,9 +26,18 @@ function formatINR(amount: number) {
 }
 
 export default function Page() {
-  const [filtersData, setFiltersData] = React.useState({
+  const [filtersData, setFiltersData] = React.useState<{
+    brands: { id: string; name: string }[];
+    types: { id: string; name: string }[];
+    categories: { id: string; name: string }[];
+    products: ProductListItem[];
+    // optional fields for when a requested category has no products
+    fallbackProducts?: ProductListItem[];
+    noProductsForCategoryName?: string;
+  }>({
     brands: [],
     types: [],
+    categories: [],
     products: [],
   });
   const [loading, setLoading] = React.useState(true);
@@ -38,14 +48,52 @@ export default function Page() {
   React.useEffect(() => {
     async function fetchData() {
       try {
-        const [productData, filterData] = await Promise.all([
-          getProducts({ filters: {}, page: 1, pageSize: 24 }),
-          getFilterOptions(),
-        ]);
+        // Fetch filter options (brands, types, categories) first
+        const filterData: FilterOptions = await getFilterOptions();
+
+        // Read category param from URL (accept either display name or id)
+        const sp = new URLSearchParams(window.location.search);
+        const categoryParam = (sp.get("category") || "").trim();
+
+        let productsResult = await getProducts({ filters: {}, page: 1, pageSize: 24 });
+
+        // If a category param exists, try to resolve it to a category id (match by id or name, case-insensitive)
+        if (categoryParam) {
+          const matched = filterData.categories.find((c) =>
+            c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
+          );
+          if (matched) {
+            // fetch products filtered by category id
+            const filtered = await getProducts({ filters: { categoryIds: [matched.id] }, page: 1, pageSize: 24 });
+            productsResult = filtered;
+            // If no products found for this category, also fetch a fallback (unfiltered) list to show below the message
+            if ((filtered.items || []).length === 0) {
+              const fallback = await getProducts({ filters: {}, page: 1, pageSize: 24 });
+              // store fallback details locally
+              // we'll merge them into the state below
+              const backupProducts = fallback.items;
+              const noProductsName = matched.name;
+              // set into state after fetching
+              setFiltersData((prev) => ({
+                ...prev,
+                brands: filterData.brands,
+                types: filterData.types,
+                categories: filterData.categories,
+                products: productsResult.items,
+                fallbackProducts: backupProducts,
+                noProductsForCategoryName: noProductsName,
+              }));
+              // and then return early to avoid overwriting state again later
+              return;
+            }
+          }
+        }
+
         setFiltersData({
           brands: filterData.brands,
           types: filterData.types,
-          products: productData.items,
+          categories: filterData.categories,
+          products: productsResult.items,
         });
       } catch (err) {
         console.error("Database connection failed:", err);
@@ -99,10 +147,10 @@ export default function Page() {
             </div>
           ) : (
             <>
-              {/* Product Grid */}
-              <div className="product-grid">
-                {filtersData.products.length > 0 ? (
-                  filtersData.products.map((product: ProductListItem) => {
+                {/* Product Grid */}
+                <div className="product-grid">
+                  {filtersData.products.length > 0 ? (
+                    filtersData.products.map((product: ProductListItem) => {
                     const primaryPhoto =
                       product.photos.find((p) => p.isPrimary) ??
                       product.photos[0];
@@ -155,9 +203,48 @@ export default function Page() {
                     );
                   })
                 ) : (
-                  <p style={{ color: "#bbb", textAlign: "center" }}>
-                    No products found.
-                  </p>
+                  // If a category was requested and no products found for it, show a message with the category name and then render fallback products (if available)
+                  (() => {
+                    const fd = filtersData;
+                    if (fd.noProductsForCategoryName) {
+                      return (
+                        <div style={{ textAlign: "center", color: "#bbb", width: "100%" }}>
+                          <p>
+                            No products found from &quot;{fd.noProductsForCategoryName}&quot;
+                          </p>
+                          <div className="product-grid">
+                            {(fd.fallbackProducts || []).map((product: ProductListItem) => (
+                              <Link
+                                href={`/ProductDetail/${product.id}`}
+                                key={product.id}
+                                className="product-card"
+                              >
+                                {product.photos[0] ? (
+                                  <Image
+                                    src={product.photos[0].url}
+                                    alt={product.photos[0].alt ?? product.name}
+                                    width={300}
+                                    height={200}
+                                    style={{ width: "100%", height: "200px", objectFit: "contain", borderRadius: "8px" }}
+                                  />
+                                ) : (
+                                  <div style={{ height: 200, background: "#222", borderRadius: "8px" }} />
+                                )}
+                                <h4>{product.name}</h4>
+                                <p>{`${product.caliber.name}, ${product.type.name}`}</p>
+                                <h3>{formatINR(product.price)}</h3>
+                                <button className="add-to-cart">View Product</button>
+                              </Link>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    }
+
+                    return (
+                      <p style={{ color: "#bbb", textAlign: "center" }}>No products found.</p>
+                    );
+                  })()
                 )}
               </div>
 

@@ -170,8 +170,15 @@ export async function getFilterOptions() {
     prisma.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
     prisma.type.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
-  return { brands, types };
+  const categories = await prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
+  return { brands, types, categories };
 }
+
+export type FilterOptions = {
+  brands: { id: string; name: string }[];
+  types: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
+};
 
 export async function getProductById(productId: string): Promise<ProductListItem | null> {
   if (!productId) return null;

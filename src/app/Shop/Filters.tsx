@@ -8,10 +8,11 @@ type Option = { id: string; name: string };
 type Props = {
   brands: Option[];
   types: Option[];
+  categories?: Option[];
   onClose?: () => void;
 };
 
-function FiltersInner({ brands, types, onClose }: Props) {
+function FiltersInner({ brands, types, onClose, categories }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const params = useSearchParams();
@@ -45,6 +46,7 @@ function FiltersInner({ brands, types, onClose }: Props) {
 
   const selectedBrandIds = (params.get("brands") || "").split(",").filter(Boolean);
   const selectedTypeIds = (params.get("types") || "").split(",").filter(Boolean);
+  const selectedCategory = params.get("category") || "";
   const minPrice = params.get("min") || "";
   const maxPrice = params.get("max") || "";
   const sort = params.get("sort") || "relevance";
@@ -70,6 +72,31 @@ function FiltersInner({ brands, types, onClose }: Props) {
           </label>
         ))}
       </div>
+
+  {categories && categories.length > 0 && (
+        <div className="filter-group">
+          <strong>Category</strong>
+          <div>
+            {categories.map((c) => {
+              const isActive = selectedCategory === c.id || selectedCategory === c.name;
+              return (
+                <button
+                  key={c.id}
+                  className={`pill ${isActive ? "active" : ""}`}
+                  onClick={() => setParam("category", isActive ? null : c.name)}
+                >
+                  {c.name}
+                </button>
+              );
+            })}
+            {selectedCategory && (
+              <button className="pill clear" onClick={() => setParam("category", null)}>
+                Clear
+              </button>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="filter-group">
         <strong>Type</strong>

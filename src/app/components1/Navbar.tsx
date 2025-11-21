@@ -1,7 +1,7 @@
 "use client";
 
 import Link from 'next/link';
-import { FaShoppingCart, FaUser, FaHeart } from 'react-icons/fa';
+import { FaShoppingCart, FaUser, FaHeart, FaStore } from 'react-icons/fa';
 import './Navbar.css';
 import SearchBar from './SearchBar';
 import ProtectedLink from './ProtectedLink';
@@ -19,7 +19,17 @@ export default function Navbar() {
         <div style={{ minWidth: 280 }}>
           <SearchBar />
         </div>
-
+        <div className="shop-icon">
+          <ProtectedLink 
+            href="/Shop" 
+            title="Shop"
+            authTitle="Sign in to view products"
+            authMessage="Start shopping and save items to your cart by signing in."
+          >
+            <FaStore className="icon" title="Shop" />
+          </ProtectedLink>
+          {/* <span className="cart-count">2</span> */}
+        </div>
         {/* Wishlist Heart */}
         <div className="wishlist-icon">
           <ProtectedLink 
@@ -54,7 +64,10 @@ export default function Navbar() {
         >
           <FaUser className="icon" title="Profile" />
         </ProtectedLink>
+        
+
       </div>
+      
     </header>
   );
 }
