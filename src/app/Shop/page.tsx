@@ -29,15 +29,10 @@ export default function Page() {
   const [filtersData, setFiltersData] = React.useState<{
     brands: { id: string; name: string }[];
     types: { id: string; name: string }[];
-<<<<<<< HEAD
     categories: { id: string; name: string }[];
     products: ProductListItem[];
-    // optional fields for when a requested category has no products
     fallbackProducts?: ProductListItem[];
     noProductsForCategoryName?: string;
-=======
-    products: ProductListItem[];
->>>>>>> b68a7a38dfd87d5ef714fa99ff2b357f51ffb7d8
   }>({
     brands: [],
     types: [],
