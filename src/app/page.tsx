@@ -3,8 +3,40 @@ import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import Link from 'next/link';
 import { Target, Crosshair, Package, Eye, AlertCircle } from 'lucide-react'; // icons
+import { getProducts } from '@/actions/products';
+import Image from 'next/image';
 
-export default function Home() {
+export default async function Home() {
+  // Fetch all categories to find "Air Guns" category ID
+  const { PrismaClient } = await import('@prisma/client');
+  let prisma;
+  if (process.env.NODE_ENV === "production") {
+    prisma = new PrismaClient();
+  } else {
+    if (!(global as any).__PRISMA__) {
+      (global as any).__PRISMA__ = new PrismaClient();
+    }
+    prisma = (global as any).__PRISMA__;
+  }
+  
+  const airgunsCategories = await prisma.category.findMany({
+    where: {
+      name: {
+        contains: 'Air',
+        mode: 'insensitive',
+      },
+    },
+  });
+  
+  // Fetch products with the airgun category (limit to 4)
+  const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
+  const featuredProducts = await getProducts({
+    filters: {
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+    },
+    page: 1,
+    pageSize: 4,
+  });
   const categories = [
     { name: 'Air Guns', sub: 'Precision & Power', icon: <Target size={40} color="#e63946" /> },
     { name: 'Ammunition', sub: '500+ Types', icon: <Package size={40} color="#e63946" /> },
@@ -58,10 +90,28 @@ export default function Home() {
       <section className="products">
         <h2>FEATURED PRODUCTS</h2>
         <div className="product-grid">
-          <div className="product-card">Glock 19 Gen4</div>
-          <div className="product-card">AR-15 Tactical</div>
-          <div className="product-card">Tactical Scope 4x32</div>
-          <div className="product-card">New PUL Ammo</div>
+          {featuredProducts.items.length > 0 ? (
+            featuredProducts.items.map((product) => (
+              <Link key={product.id} href={`/ProductDetail/${product.id}`}>
+                <div className="product-card">
+                  {product.photos.length > 0 ? (
+                    <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '10px' }}>
+                      <Image 
+                        src={product.photos.find(p => p.isPrimary)?.url || product.photos[0].url}
+                        alt={product.name}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                  ) : null}
+                  <h3>{product.name}</h3>
+                  <p>₹{product.price.toLocaleString()}</p>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <p style={{ color: '#888' }}>No featured products available.</p>
+          )}
         </div>
       </section>
 
