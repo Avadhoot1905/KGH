@@ -232,20 +232,20 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               <input name="tag" defaultValue={product.tag ?? ""} className="border rounded px-2 py-1.5" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Brand Id</span>
-              <input name="brandId" placeholder={product.brand?.name} className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600">Brand Name</span>
+              <input name="brandName" defaultValue={product.brand?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Glock, Precihole" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Type Id</span>
-              <input name="typeId" placeholder={product.type?.name} className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600">Type Name</span>
+              <input name="typeName" defaultValue={product.type?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Pistol, Rifle" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Caliber Id</span>
-              <input name="caliberId" placeholder={product.caliber?.name} className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600">Caliber Name</span>
+              <input name="caliberName" defaultValue={product.caliber?.name} className="border rounded px-2 py-1.5" placeholder="e.g., 9mm, .45 ACP" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Category Id</span>
-              <input name="categoryId" placeholder={product.category?.name} className="border rounded px-2 py-1.5" />
+              <span className="text-sm text-gray-600">Category Name</span>
+              <input name="categoryName" defaultValue={product.category?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Handgun, Scope" />
             </label>
             <div className="md:col-span-2">
               {loadingProducts ? (

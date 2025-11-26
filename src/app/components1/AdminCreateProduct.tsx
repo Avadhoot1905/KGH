@@ -96,20 +96,20 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
               <input name="tag" className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Brand Id</span>
-              <input name="brandId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Brand Name</span>
+              <input name="brandName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Glock, Precihole" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Type Id</span>
-              <input name="typeId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Type Name</span>
+              <input name="typeName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Pistol, Rifle" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Caliber Id</span>
-              <input name="caliberId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Caliber Name</span>
+              <input name="caliberName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., 9mm, .45 ACP" />
             </label>
             <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Category Id</span>
-              <input name="categoryId" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
+              <span className="text-sm text-gray-600 dark:text-gray-300">Category Name</span>
+              <input name="categoryName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Handgun, Scope" />
             </label>
             <div className="md:col-span-2">
               {loadingProducts ? (

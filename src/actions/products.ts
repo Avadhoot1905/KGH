@@ -287,10 +287,10 @@ export async function updateProductAction(
   const quantityStr = (formData.get("quantity") as string) ?? undefined;
   const licenseRequiredStr = (formData.get("licenseRequired") as string) ?? undefined;
   const tag = (formData.get("tag") as string) || null;
-  const brandId = (formData.get("brandId") as string) ?? undefined;
-  const typeId = (formData.get("typeId") as string) ?? undefined;
-  const caliberId = (formData.get("caliberId") as string) ?? undefined;
-  const categoryId = (formData.get("categoryId") as string) ?? undefined;
+  const brandName = (formData.get("brandName") as string)?.trim() ?? undefined;
+  const typeName = (formData.get("typeName") as string)?.trim() ?? undefined;
+  const caliberName = (formData.get("caliberName") as string)?.trim() ?? undefined;
+  const categoryName = (formData.get("categoryName") as string)?.trim() ?? undefined;
   const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
@@ -317,10 +317,39 @@ export async function updateProductAction(
   if (typeof licenseRequiredStr === "string") data.licenseRequired = licenseRequiredStr === "on" || licenseRequiredStr === "true";
   if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as "NEW" | "TOP_SELLER"; else if (tag === "") data.tag = null;
 
-  if (brandId) data.brand = { connect: { id: brandId } };
-  if (typeId) data.type = { connect: { id: typeId } };
-  if (caliberId) data.caliber = { connect: { id: caliberId } };
-  if (categoryId) data.category = { connect: { id: categoryId } };
+  // Find or create entities by name if provided
+  if (brandName) {
+    const brand = await prisma.brand.upsert({
+      where: { name: brandName },
+      update: {},
+      create: { name: brandName },
+    });
+    data.brand = { connect: { id: brand.id } };
+  }
+  if (typeName) {
+    const type = await prisma.type.upsert({
+      where: { name: typeName },
+      update: {},
+      create: { name: typeName },
+    });
+    data.type = { connect: { id: type.id } };
+  }
+  if (caliberName) {
+    const caliber = await prisma.caliber.upsert({
+      where: { name: caliberName },
+      update: {},
+      create: { name: caliberName },
+    });
+    data.caliber = { connect: { id: caliber.id } };
+  }
+  if (categoryName) {
+    const category = await prisma.category.upsert({
+      where: { name: categoryName },
+      update: {},
+      create: { name: categoryName },
+    });
+    data.category = { connect: { id: category.id } };
+  }
 
   // Handle related products
   if (relatedProductIds !== undefined) {
@@ -429,14 +458,14 @@ export async function createProductAction(formData: FormData) {
   const quantityStr = (formData.get("quantity") as string | null)?.trim() || "";
   const licenseRequiredStr = (formData.get("licenseRequired") as string | null) || null;
   const tag = ((formData.get("tag") as string | null)?.trim() || "") || null;
-  const brandId = (formData.get("brandId") as string | null)?.trim() || "";
-  const typeId = (formData.get("typeId") as string | null)?.trim() || "";
-  const caliberId = (formData.get("caliberId") as string | null)?.trim() || "";
-  const categoryId = (formData.get("categoryId") as string | null)?.trim() || "";
+  const brandName = (formData.get("brandName") as string | null)?.trim() || "";
+  const typeName = (formData.get("typeName") as string | null)?.trim() || "";
+  const caliberName = (formData.get("caliberName") as string | null)?.trim() || "";
+  const categoryName = (formData.get("categoryName") as string | null)?.trim() || "";
   const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
-  if (!name || !description || !priceStr || !quantityStr || !brandId || !typeId || !caliberId || !categoryId) {
+  if (!name || !description || !priceStr || !quantityStr || !brandName || !typeName || !caliberName || !categoryName) {
     throw new Error("All fields except image are required");
   }
 
@@ -444,6 +473,30 @@ export async function createProductAction(formData: FormData) {
   const quantity = Number(quantityStr);
   if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
   if (!Number.isInteger(quantity) || quantity < 0) throw new Error("Invalid quantity");
+
+  // Find or create Brand, Type, Caliber, and Category by name
+  const [brand, type, caliber, category] = await Promise.all([
+    prisma.brand.upsert({
+      where: { name: brandName },
+      update: {},
+      create: { name: brandName },
+    }),
+    prisma.type.upsert({
+      where: { name: typeName },
+      update: {},
+      create: { name: typeName },
+    }),
+    prisma.caliber.upsert({
+      where: { name: caliberName },
+      update: {},
+      create: { name: caliberName },
+    }),
+    prisma.category.upsert({
+      where: { name: categoryName },
+      update: {},
+      create: { name: categoryName },
+    }),
+  ]);
 
   type CreateData = {
     name: string;
@@ -467,10 +520,10 @@ export async function createProductAction(formData: FormData) {
     quantity,
     licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
     tag: tag ? (tag as "NEW" | "TOP_SELLER") : undefined,
-    brand: { connect: { id: brandId } },
-    type: { connect: { id: typeId } },
-    caliber: { connect: { id: caliberId } },
-    category: { connect: { id: categoryId } },
+    brand: { connect: { id: brand.id } },
+    type: { connect: { id: type.id } },
+    caliber: { connect: { id: caliber.id } },
+    category: { connect: { id: category.id } },
   };
 
   // Handle related products
