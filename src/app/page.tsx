@@ -5,6 +5,11 @@ import Link from 'next/link';
 import { Target, Crosshair, Package, Eye, AlertCircle } from 'lucide-react'; // icons
 import { getProducts } from '@/actions/products';
 import Image from 'next/image';
+import type { PrismaClient } from '@prisma/client';
+
+declare global {
+  var __PRISMA__: PrismaClient | undefined;
+}
 
 export default async function Home() {
   // Fetch all categories to find "Air Guns" category ID
@@ -13,10 +18,10 @@ export default async function Home() {
   if (process.env.NODE_ENV === "production") {
     prisma = new PrismaClient();
   } else {
-    if (!(global as any).__PRISMA__) {
-      (global as any).__PRISMA__ = new PrismaClient();
+    if (!global.__PRISMA__) {
+      global.__PRISMA__ = new PrismaClient();
     }
-    prisma = (global as any).__PRISMA__;
+    prisma = global.__PRISMA__;
   }
   
   const airgunsCategories = await prisma.category.findMany({
