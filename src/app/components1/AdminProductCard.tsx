@@ -3,9 +3,21 @@
 import Image from "next/image";
 import { useRef, useState, FormEvent, useEffect } from "react";
 import { ProductListItem } from "@/actions/products";
-import { updateProductAction, deleteProductAction, getAllProductsForSelector } from "@/actions/products";
+import { 
+  updateProductAction, 
+  deleteProductAction, 
+  getAllProductsForSelector,
+  getAllBrandsForSelector,
+  getAllTypesForSelector,
+  getAllCalibersForSelector,
+  getAllCategoriesForSelector,
+  getAllTagsForSelector,
+  addNewTagAction
+} from "@/actions/products";
 import { useRouter } from "next/navigation";
 import RelatedProductsSelector from "./RelatedProductsSelector";
+import AutocompleteInput from "./AutocompleteInput";
+import TagAutocompleteInput from "./TagAutocompleteInput";
 
 type AdminProductCardProps = {
   product: ProductListItem;
@@ -24,20 +36,48 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     product.relatedProducts?.map((p) => p.id) || []
   );
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [calibers, setCalibers] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
 
   useEffect(() => {
     setLoadingProducts(true);
-    getAllProductsForSelector()
-      .then((products) => {
-        setAllProducts(products);
+    Promise.all([
+      getAllProductsForSelector(),
+      getAllBrandsForSelector(),
+      getAllTypesForSelector(),
+      getAllCalibersForSelector(),
+      getAllCategoriesForSelector(),
+      getAllTagsForSelector(),
+    ])
+      .then(([productsData, brandsData, typesData, calibersData, categoriesData, tagsData]) => {
+        setAllProducts(productsData);
+        setBrands(brandsData);
+        setTypes(typesData);
+        setCalibers(calibersData);
+        setCategories(categoriesData);
+        setTags(tagsData);
       })
       .catch(() => {
-        setError("Failed to load products");
+        setError("Failed to load data");
       })
       .finally(() => {
         setLoadingProducts(false);
       });
   }, []);
+
+  async function handleAddNewTag(tagName: string) {
+    try {
+      const normalizedTag = await addNewTagAction(tagName);
+      setTags((prev) => [...prev, normalizedTag].sort());
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Failed to add new tag:", error);
+      throw error;
+    }
+  }
 
   useEffect(() => {
     return () => {
@@ -227,26 +267,42 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               <input name="licenseRequired" type="checkbox" defaultChecked={product.licenseRequired} />
               <span className="text-sm text-gray-700">License Required</span>
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Tag</span>
-              <input name="tag" defaultValue={product.tag ?? ""} className="border rounded px-2 py-1.5" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Brand Name</span>
-              <input name="brandName" defaultValue={product.brand?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Glock, Precihole" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Type Name</span>
-              <input name="typeName" defaultValue={product.type?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Pistol, Rifle" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Caliber Name</span>
-              <input name="caliberName" defaultValue={product.caliber?.name} className="border rounded px-2 py-1.5" placeholder="e.g., 9mm, .45 ACP" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600">Category Name</span>
-              <input name="categoryName" defaultValue={product.category?.name} className="border rounded px-2 py-1.5" placeholder="e.g., Handgun, Scope" />
-            </label>
+            <TagAutocompleteInput
+              name="tag"
+              label="Tag"
+              placeholder="e.g., NEW, TOP_SELLER"
+              defaultValue={product.tag ?? ""}
+              availableTags={tags}
+              onAddNewTag={handleAddNewTag}
+            />
+            <AutocompleteInput
+              name="brandName"
+              label="Brand Name"
+              placeholder="e.g., Glock, Precihole"
+              defaultValue={product.brand?.name}
+              options={brands}
+            />
+            <AutocompleteInput
+              name="typeName"
+              label="Type Name"
+              placeholder="e.g., Pistol, Rifle"
+              defaultValue={product.type?.name}
+              options={types}
+            />
+            <AutocompleteInput
+              name="caliberName"
+              label="Caliber Name"
+              placeholder="e.g., 9mm, .45 ACP"
+              defaultValue={product.caliber?.name}
+              options={calibers}
+            />
+            <AutocompleteInput
+              name="categoryName"
+              label="Category Name"
+              placeholder="e.g., Handgun, Scope"
+              defaultValue={product.category?.name}
+              options={categories}
+            />
             <div className="md:col-span-2">
               {loadingProducts ? (
                 <div className="text-sm text-gray-500">Loading products...</div>

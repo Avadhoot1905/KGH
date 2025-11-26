@@ -1,6 +1,6 @@
 "use server";
 
-import { PrismaClient, Prisma, ProductTag } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 let prisma: PrismaClient;
 declare global {
@@ -45,7 +45,7 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
-  tag?: ProductTag;
+  tag?: string;
   sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC";
 };
 
@@ -96,7 +96,7 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefi
     };
   }
   if (filters.tag) {
-    where.tag = filters.tag as ProductTag;
+    where.tag = filters.tag;
   }
   if (filters.search && filters.search.trim().length > 0) {
     const q = filters.search.trim();
@@ -300,7 +300,7 @@ export async function updateProductAction(
     price?: number;
     quantity?: number;
     licenseRequired?: boolean;
-    tag?: "NEW" | "TOP_SELLER" | null;
+    tag?: string | null;
     brand?: { connect: { id: string } };
     type?: { connect: { id: string } };
     caliber?: { connect: { id: string } };
@@ -315,7 +315,7 @@ export async function updateProductAction(
   if (typeof priceStr === "string" && priceStr.trim() !== "") data.price = Number(priceStr);
   if (typeof quantityStr === "string" && quantityStr.trim() !== "") data.quantity = Number(quantityStr);
   if (typeof licenseRequiredStr === "string") data.licenseRequired = licenseRequiredStr === "on" || licenseRequiredStr === "true";
-  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as "NEW" | "TOP_SELLER"; else if (tag === "") data.tag = null;
+  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag; else if (tag === "") data.tag = null;
 
   // Find or create entities by name if provided
   if (brandName) {
@@ -441,6 +441,157 @@ export async function getAllProductsForSelector() {
   return products;
 }
 
+// Get all brands for autocomplete (admin-only)
+export async function getAllBrandsForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const brands = await prisma.brand.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return brands.map(b => b.name);
+}
+
+// Get all types for autocomplete (admin-only)
+export async function getAllTypesForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const types = await prisma.type.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return types.map(t => t.name);
+}
+
+// Get all calibers for autocomplete (admin-only)
+export async function getAllCalibersForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const calibers = await prisma.caliber.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return calibers.map(c => c.name);
+}
+
+// Get all categories for autocomplete (admin-only)
+export async function getAllCategoriesForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const categories = await prisma.category.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return categories.map(c => c.name);
+}
+
+// Get all available tags (including enum values and any custom ones if needed)
+export async function getAllTagsForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  // Return the enum values plus any custom tags found in the database
+  const enumTags = ["NEW", "TOP_SELLER"];
+  
+  // Get unique tags from existing products
+  const customTags = await prisma.product.findMany({
+    where: {
+      tag: {
+        not: null,
+      },
+    },
+    select: {
+      tag: true,
+    },
+    distinct: ["tag"],
+  });
+
+  const allTags = [...new Set([...enumTags, ...customTags.map(p => p.tag).filter(Boolean)])];
+  return allTags as string[];
+}
+
+// Add a new tag (admin-only) - Note: This is more of a validation function
+// since tags are stored directly on products
+export async function addNewTagAction(tagName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const normalizedTag = tagName.trim().toUpperCase().replace(/\s+/g, "_");
+  
+  if (!normalizedTag) {
+    throw new Error("Tag name cannot be empty");
+  }
+
+  // Validate tag format (alphanumeric and underscores only)
+  if (!/^[A-Z0-9_]+$/.test(normalizedTag)) {
+    throw new Error("Tag can only contain letters, numbers, and underscores");
+  }
+
+  // Return the normalized tag name to confirm it's valid
+  // The actual tag will be saved when the product is created/updated
+  return normalizedTag;
+}
+
 // Create a product (admin-only)
 export async function createProductAction(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -504,7 +655,7 @@ export async function createProductAction(formData: FormData) {
     price: number;
     quantity: number;
     licenseRequired: boolean;
-    tag?: "NEW" | "TOP_SELLER";
+    tag?: string;
     brand: { connect: { id: string } };
     type: { connect: { id: string } };
     caliber: { connect: { id: string } };
@@ -519,7 +670,7 @@ export async function createProductAction(formData: FormData) {
     price,
     quantity,
     licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
-    tag: tag ? (tag as "NEW" | "TOP_SELLER") : undefined,
+    tag: tag || undefined,
     brand: { connect: { id: brand.id } },
     type: { connect: { id: type.id } },
     caliber: { connect: { id: caliber.id } },

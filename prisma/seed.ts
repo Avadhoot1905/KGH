@@ -1,4 +1,4 @@
-import { PrismaClient, ProductTag } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
@@ -11,7 +11,7 @@ type SeedProductInput = {
   description: string;
   quantity: number;
   licenseRequired: boolean;
-  tag?: ProductTag;
+  tag?: string;
   category: string;
   brand: string;
   type: string;

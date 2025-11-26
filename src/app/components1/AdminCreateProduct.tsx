@@ -1,8 +1,19 @@
 "use client";
 
 import { useRef, useState, FormEvent } from "react";
-import { createProductAction, getAllProductsForSelector } from "@/actions/products";
+import { 
+  createProductAction, 
+  getAllProductsForSelector,
+  getAllBrandsForSelector,
+  getAllTypesForSelector,
+  getAllCalibersForSelector,
+  getAllCategoriesForSelector,
+  getAllTagsForSelector,
+  addNewTagAction
+} from "@/actions/products";
 import RelatedProductsSelector from "./RelatedProductsSelector";
+import AutocompleteInput from "./AutocompleteInput";
+import TagAutocompleteInput from "./TagAutocompleteInput";
 
 type AdminCreateProductProps = {
   buttonClassName?: string;
@@ -15,6 +26,12 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
   const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<string[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
+  const [brands, setBrands] = useState<string[]>([]);
+  const [types, setTypes] = useState<string[]>([]);
+  const [calibers, setCalibers] = useState<string[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [tags, setTags] = useState<string[]>([]);
+  const [loadingOptions, setLoadingOptions] = useState(false);
 
   async function loadProducts() {
     if (allProducts.length === 0 && !loadingProducts) {
@@ -30,10 +47,46 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
     }
   }
 
+  async function loadOptions() {
+    if (!loadingOptions && (brands.length === 0 || types.length === 0 || calibers.length === 0 || categories.length === 0 || tags.length === 0)) {
+      setLoadingOptions(true);
+      try {
+        const [brandsData, typesData, calibersData, categoriesData, tagsData] = await Promise.all([
+          getAllBrandsForSelector(),
+          getAllTypesForSelector(),
+          getAllCalibersForSelector(),
+          getAllCategoriesForSelector(),
+          getAllTagsForSelector(),
+        ]);
+        setBrands(brandsData);
+        setTypes(typesData);
+        setCalibers(calibersData);
+        setCategories(categoriesData);
+        setTags(tagsData);
+      } catch (e) {
+        console.error("Failed to load options", e);
+      } finally {
+        setLoadingOptions(false);
+      }
+    }
+  }
+
+  async function handleAddNewTag(tagName: string) {
+    try {
+      const normalizedTag = await addNewTagAction(tagName);
+      setTags((prev) => [...prev, normalizedTag].sort());
+      return Promise.resolve();
+    } catch (error) {
+      console.error("Failed to add new tag:", error);
+      throw error;
+    }
+  }
+
   function openDialog() {
     setError(null);
     setSelectedRelatedIds([]);
     loadProducts();
+    loadOptions();
     dialogRef.current?.showModal();
   }
 
@@ -91,26 +144,45 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
               <input name="licenseRequired" type="checkbox" className="accent-black dark:accent-white" />
               <span className="text-sm text-gray-700 dark:text-gray-300">License Required</span>
             </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Tag</span>
-              <input name="tag" className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Brand Name</span>
-              <input name="brandName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Glock, Precihole" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Type Name</span>
-              <input name="typeName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Pistol, Rifle" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Caliber Name</span>
-              <input name="caliberName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., 9mm, .45 ACP" />
-            </label>
-            <label className="flex flex-col gap-1">
-              <span className="text-sm text-gray-600 dark:text-gray-300">Category Name</span>
-              <input name="categoryName" required className="border rounded px-2 py-1.5 bg-white dark:bg-[#111] text-black dark:text-white border-gray-300 dark:border-[#333]" placeholder="e.g., Handgun, Scope" />
-            </label>
+            <TagAutocompleteInput
+              name="tag"
+              label="Tag"
+              placeholder="e.g., NEW, TOP_SELLER"
+              availableTags={tags}
+              onAddNewTag={handleAddNewTag}
+            />
+            <AutocompleteInput
+              name="brandName"
+              label="Brand Name"
+              placeholder="e.g., Glock, Precihole"
+              required
+              options={brands}
+              onLoadOptions={loadOptions}
+            />
+            <AutocompleteInput
+              name="typeName"
+              label="Type Name"
+              placeholder="e.g., Pistol, Rifle"
+              required
+              options={types}
+              onLoadOptions={loadOptions}
+            />
+            <AutocompleteInput
+              name="caliberName"
+              label="Caliber Name"
+              placeholder="e.g., 9mm, .45 ACP"
+              required
+              options={calibers}
+              onLoadOptions={loadOptions}
+            />
+            <AutocompleteInput
+              name="categoryName"
+              label="Category Name"
+              placeholder="e.g., Handgun, Scope"
+              required
+              options={categories}
+              onLoadOptions={loadOptions}
+            />
             <div className="md:col-span-2">
               {loadingProducts ? (
                 <div className="text-sm text-gray-500 dark:text-gray-400">Loading products...</div>

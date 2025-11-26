@@ -69,7 +69,7 @@ model Product {
   description     String
   quantity        Int
   licenseRequired Boolean     @default(false)
-  tag             ProductTag?
+  tag             String?
   addedAt         DateTime?   @default(now())
   removedAt       DateTime?
   categoryId      String
@@ -202,11 +202,6 @@ model OrderItem {
 enum Role {
   ADMIN
   NORMAL_USER
-}
-
-enum ProductTag {
-  NEW
-  TOP_SELLER
 }
 
 enum OrderStatus {
