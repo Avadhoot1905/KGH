@@ -1,5 +1,6 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import "./shop.css";
 import Navbar from "../components1/Navbar";
 import Footer from "../components1/Footer";
@@ -11,6 +12,7 @@ import {
   getFilterOptions,
   type ProductListItem,
   type FilterOptions,
+  type ProductFilters,
 } from "@/actions/products";
 
 function formatINR(amount: number) {
@@ -25,8 +27,9 @@ function formatINR(amount: number) {
   }
 }
 
-export default function Page() {
-  const [filtersData, setFiltersData] = React.useState<{
+function ShopContent() {
+  const searchParams = useSearchParams();
+  const [filtersData, setFiltersData] = useState<{
     brands: { id: string; name: string }[];
     types: { id: string; name: string }[];
     categories: { id: string; name: string }[];
@@ -39,70 +42,120 @@ export default function Page() {
     categories: [],
     products: [],
   });
-  const [loading, setLoading] = React.useState(true);
-  const [dbError, setDbError] = React.useState(false);
+  const [loading, setLoading] = useState(true);
+  const [dbError, setDbError] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Fetch products and filters on mount
-  React.useEffect(() => {
-    async function fetchData() {
+  // Fetch filter options (brands, types, categories) on mount only
+  useEffect(() => {
+    async function fetchFilterOptions() {
       try {
-        // Fetch filter options (brands, types, categories) first
         const filterData: FilterOptions = await getFilterOptions();
-
-        // Read category param from URL (accept either display name or id)
-        const sp = new URLSearchParams(window.location.search);
-        const categoryParam = (sp.get("category") || "").trim();
-
-        let productsResult = await getProducts({ filters: {}, page: 1, pageSize: 24 });
-
-        // If a category param exists, try to resolve it to a category id (match by id or name, case-insensitive)
-        if (categoryParam) {
-          const matched = filterData.categories.find((c) =>
-            c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
-          );
-          if (matched) {
-            // fetch products filtered by category id
-            const filtered = await getProducts({ filters: { categoryIds: [matched.id] }, page: 1, pageSize: 24 });
-            productsResult = filtered;
-            // If no products found for this category, also fetch a fallback (unfiltered) list to show below the message
-            if ((filtered.items || []).length === 0) {
-              const fallback = await getProducts({ filters: {}, page: 1, pageSize: 24 });
-              // store fallback details locally
-              // we'll merge them into the state below
-              const backupProducts = fallback.items;
-              const noProductsName = matched.name;
-              // set into state after fetching
-              setFiltersData((prev) => ({
-                ...prev,
-                brands: filterData.brands,
-                types: filterData.types,
-                categories: filterData.categories,
-                products: productsResult.items,
-                fallbackProducts: backupProducts,
-                noProductsForCategoryName: noProductsName,
-              }));
-              // and then return early to avoid overwriting state again later
-              return;
-            }
-          }
-        }
-
-        setFiltersData({
+        setFiltersData((prev) => ({
+          ...prev,
           brands: filterData.brands,
           types: filterData.types,
           categories: filterData.categories,
-          products: productsResult.items,
-        });
+        }));
       } catch (err) {
-        console.error("Database connection failed:", err);
+        console.error("Failed to fetch filter options:", err);
+        setDbError(true);
+      }
+    }
+    fetchFilterOptions();
+  }, []);
+
+  // Fetch products whenever search params change
+  useEffect(() => {
+    async function fetchProducts() {
+      if (filtersData.brands.length === 0) return; // Wait for filter options to load first
+      
+      setLoading(true);
+      try {
+        // Parse URL parameters to build filters
+        const filters: ProductFilters = {};
+
+        // Brand filters
+        const brandsParam = searchParams.get("brands");
+        if (brandsParam) {
+          filters.brandIds = brandsParam.split(",").filter(Boolean);
+        }
+
+        // Type filters
+        const typesParam = searchParams.get("types");
+        if (typesParam) {
+          filters.typeIds = typesParam.split(",").filter(Boolean);
+        }
+
+        // Category filter
+        const categoryParam = searchParams.get("category");
+        if (categoryParam) {
+          const matched = filtersData.categories.find((c) =>
+            c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
+          );
+          if (matched) {
+            filters.categoryIds = [matched.id];
+          }
+        }
+
+        // Price range filters
+        const minParam = searchParams.get("min");
+        const maxParam = searchParams.get("max");
+        if (minParam) {
+          const minPrice = parseFloat(minParam);
+          if (!isNaN(minPrice)) {
+            filters.minPrice = minPrice;
+          }
+        }
+        if (maxParam) {
+          const maxPrice = parseFloat(maxParam);
+          if (!isNaN(maxPrice)) {
+            filters.maxPrice = maxPrice;
+          }
+        }
+
+        // Sort filter
+        const sortParam = searchParams.get("sort");
+        if (sortParam && sortParam !== "relevance") {
+          filters.sort = sortParam as ProductFilters["sort"];
+        }
+
+        // Fetch products with filters
+        const productsResult = await getProducts({ filters, page: 1, pageSize: 24 });
+
+        // If a category was selected and no products found, fetch fallback
+        if (categoryParam && productsResult.items.length === 0) {
+          const matched = filtersData.categories.find((c) =>
+            c.id === categoryParam || c.name.toLowerCase() === categoryParam.toLowerCase()
+          );
+          if (matched) {
+            const fallback = await getProducts({ filters: {}, page: 1, pageSize: 24 });
+            setFiltersData((prev) => ({
+              ...prev,
+              products: productsResult.items,
+              fallbackProducts: fallback.items,
+              noProductsForCategoryName: matched.name,
+            }));
+            setLoading(false);
+            return;
+          }
+        }
+
+        setFiltersData((prev) => ({
+          ...prev,
+          products: productsResult.items,
+          fallbackProducts: undefined,
+          noProductsForCategoryName: undefined,
+        }));
+      } catch (err) {
+        console.error("Failed to fetch products:", err);
         setDbError(true);
       } finally {
         setLoading(false);
       }
     }
-    fetchData();
-  }, []);
+    fetchProducts();
+  }, [searchParams, filtersData.brands, filtersData.categories]);
 
   return (
     <div>
@@ -119,6 +172,7 @@ export default function Page() {
           <Filters
             brands={filtersData.brands}
             types={filtersData.types}
+            categories={filtersData.categories}
             onClose={() => setSidebarOpen(false)}
           />
         </aside>
@@ -262,5 +316,21 @@ export default function Page() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={
+      <div>
+        <Navbar />
+        <div style={{ textAlign: "center", padding: "50px", color: "#bbb" }}>
+          Loading shop...
+        </div>
+        <Footer />
+      </div>
+    }>
+      <ShopContent />
+    </Suspense>
   );
 }
