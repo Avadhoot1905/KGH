@@ -72,14 +72,20 @@ export default function WishlistPage() {
         </div>
 
         <div className="wishlist-grid">
-          {loading && wishlist.length === 0 ? (
+          {loading ? (
             <></>
+          ) : wishlist.length === 0 ? (
+            <div className="empty-state p-8 text-center text-gray-400 col-span-full">
+              <p className="text-lg font-medium">No products added yet.</p>
+              <p className="mt-2">Add your first product to your wishlist to get started.</p>
+              <Link href="/Shop"><button className="btn-red mt-4">Start Shopping</button></Link>
+            </div>
           ) : (
-          wishlist.map((item) => (
-            <div key={item.id} className="wishlist-card">
-              <div style={{ position: 'relative', width: '100%', height: '200px' }}>
-                <Image src={item.img} alt={item.name} className="wishlist-img" fill style={{ objectFit: 'cover' }} />
-              </div>
+            wishlist.map((item) => (
+              <div key={item.id} className="wishlist-card">
+                <div style={{ position: 'relative', width: '100%', height: '200px' }}>
+                  <Image src={item.img} alt={item.name} className="wishlist-img" fill style={{ objectFit: 'cover' }} />
+                </div>
               {item.tag && <span className="wishlist-tag">{item.tag}</span>}
               <h3 className="wishlist-title">{item.name}</h3>
               <p className="wishlist-price">{item.price}</p>

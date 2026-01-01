@@ -4,6 +4,7 @@ import './cart.css';
 import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
 import Image from 'next/image';
@@ -53,14 +54,20 @@ export default function Cart() {
         <div className="cart-content">
           {/* Left side - Cart Items */}
           <div className="cart-items">
-            {loading && cartItems.length === 0 ? (
+            {loading ? (
               <></>
+            ) : cartItems.length === 0 ? (
+              <div className="empty-state p-8 text-center text-gray-400 w-full">
+                <p className="text-lg font-medium">No products added yet.</p>
+                <p className="mt-2">Add your first product to your cart to get started.</p>
+                <Link href="/Shop"><button className="btn-red mt-4">Start Shopping</button></Link>
+              </div>
             ) : (
-            cartItems.map((item) => (
-              <div key={item.id} className="cart-item">
-                <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
-                  <Image src={item.image} alt={item.name} className="cart-item-img" fill style={{ objectFit: 'cover' }} />
-                </div>
+              cartItems.map((item) => (
+                <div key={item.id} className="cart-item">
+                  <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
+                    <Image src={item.image} alt={item.name} className="cart-item-img" fill style={{ objectFit: 'cover' }} />
+                  </div>
 
                 <div className="cart-item-details">
                   <h3>{item.name}</h3>
@@ -108,29 +115,31 @@ export default function Cart() {
             )}
           </div>
 
-          {/* Right side - Summary */}
-          <div className="cart-summary">
-            <h3>Order Summary</h3>
-            <div className="summary-row">
-              <span>Subtotal</span>
-              <span>${subtotal.toFixed(2)}</span>
+          {/* Right side - Summary (only show when there are cart items) */}
+          {cartItems.length > 0 && (
+            <div className="cart-summary">
+              <h3>Order Summary</h3>
+              <div className="summary-row">
+                <span>Subtotal</span>
+                <span>${subtotal.toFixed(2)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Shipping</span>
+                <span>${shipping.toFixed(2)}</span>
+              </div>
+              <div className="summary-row">
+                <span>Tax</span>
+                <span>${tax.toFixed(2)}</span>
+              </div>
+              <div className="summary-row total">
+                <span>Total</span>
+                <span>${total.toFixed(2)}</span>
+              </div>
+              <button className="checkout-btn">Proceed to Checkout</button>
+              <button className="continue-btn">Continue Shopping</button>
+              <p className="secure-text">🔒 Secure checkout with SSL encryption</p>
             </div>
-            <div className="summary-row">
-              <span>Shipping</span>
-              <span>${shipping.toFixed(2)}</span>
-            </div>
-            <div className="summary-row">
-              <span>Tax</span>
-              <span>${tax.toFixed(2)}</span>
-            </div>
-            <div className="summary-row total">
-              <span>Total</span>
-              <span>${total.toFixed(2)}</span>
-            </div>
-            <button className="checkout-btn">Proceed to Checkout</button>
-            <button className="continue-btn">Continue Shopping</button>
-            <p className="secure-text">🔒 Secure checkout with SSL encryption</p>
-          </div>
+          )}
         </div>
       </div>
 

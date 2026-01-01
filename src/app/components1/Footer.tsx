@@ -21,7 +21,7 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* === QUICK LINKS === */}
+        {/* === QUICK LINKS === 
         <div>
           <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
             Quick Links
@@ -44,6 +44,7 @@ export default function Footer() {
             </li>
           </ul>
         </div>
+        */}
 
         {/* === CONTACT === */}
         <div>

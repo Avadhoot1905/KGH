@@ -29,15 +29,11 @@ export default function Page() {
   const [filtersData, setFiltersData] = React.useState<{
     brands: { id: string; name: string }[];
     types: { id: string; name: string }[];
-<<<<<<< HEAD
     categories: { id: string; name: string }[];
     products: ProductListItem[];
     // optional fields for when a requested category has no products
     fallbackProducts?: ProductListItem[];
     noProductsForCategoryName?: string;
-=======
-    products: ProductListItem[];
->>>>>>> b68a7a38dfd87d5ef714fa99ff2b357f51ffb7d8
   }>({
     brands: [],
     types: [],
@@ -114,11 +110,6 @@ export default function Page() {
       <Navbar />
 
       <div className="shop-page">
-        {/* ===== MOBILE FILTER BUTTON ===== */}
-        <div className="mobile-filter-btn">
-          <button onClick={() => setSidebarOpen(true)}>☰ Filters</button>
-        </div>
-
         {/* ===== SIDEBAR ===== */}
         <aside className={`sidebar ${sidebarOpen ? "open" : ""}`}>
           <Filters
@@ -138,7 +129,24 @@ export default function Page() {
 
         {/* ===== MAIN CONTENT ===== */}
         <main className="content">
-          <h2>FIREARMS COLLECTION</h2>
+          {/* Title row: mobile has a small icon button to the right, sm+ centers the title */}
+          <div className="mb-2 flex items-center justify-between sm:justify-center">
+            <h2 className="m-0 text-lg font-semibold">FIREARMS COLLECTION</h2>
+
+            {/* mobile-only circular filter button (neutral styling) */}
+            <div className="sm:hidden">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-transparent border border-white/20 text-white hover:bg-white/10 focus:outline-none"
+                aria-label="Open filters"
+                title="Filters"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h18M7 12h10M10 20h4" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
           {loading ? (
             <p style={{ color: "#bbb", textAlign: "center" }}>
