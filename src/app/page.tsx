@@ -32,8 +32,44 @@ if (typeof window === 'undefined') {
 }
 
 
+import { getProducts } from '@/actions/products';
+import type { PrismaClient } from '@prisma/client';
 
-export default function Home() {
+declare global {
+  var __PRISMA__: PrismaClient | undefined;
+}
+
+export default async function Home() {
+  // Fetch all categories to find "Air Guns" category ID
+  const { PrismaClient } = await import('@prisma/client');
+  let prisma;
+  if (process.env.NODE_ENV === "production") {
+    prisma = new PrismaClient();
+  } else {
+    if (!global.__PRISMA__) {
+      global.__PRISMA__ = new PrismaClient();
+    }
+    prisma = global.__PRISMA__;
+  }
+  
+  const airgunsCategories = await prisma.category.findMany({
+    where: {
+      name: {
+        contains: 'Air',
+        mode: 'insensitive',
+      },
+    },
+  });
+  
+  // Fetch products with the airgun category (limit to 4)
+  const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
+  const featuredProducts = await getProducts({
+    filters: {
+      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+    },
+    page: 1,
+    pageSize: 4,
+  });
   const categories = [
     { name: 'Air Guns', sub: 'Precision & Power', icon: Target },
     { name: 'Ammunition', sub: '500+ Types', icon: Package },
@@ -123,20 +159,30 @@ export default function Home() {
         </div>
       </section>
 
-      {/* FEATURED PRODUCTS */}
-      <section className="px-6 lg:px-16 py-14 text-center">
-        <h2 className="text-2xl font-semibold mb-8">FEATURED PRODUCTS</h2>
-
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {['Glock 19 Gen4', 'AR-15 Tactical', 'Tactical Scope 4x32', 'New PUL Ammo'].map(
-            (item, i) => (
-              <div
-                key={i}
-                className="bg-[#1a1a1a] p-4 rounded-lg text-center"
-              >
-                {item}
-              </div>
-            )
+      <section className="products">
+        <h2>FEATURED PRODUCTS</h2>
+        <div className="product-grid">
+          {featuredProducts.items.length > 0 ? (
+            featuredProducts.items.map((product) => (
+              <Link key={product.id} href={`/ProductDetail/${product.id}`}>
+                <div className="product-card">
+                  {product.photos.length > 0 ? (
+                    <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '10px' }}>
+                      <Image 
+                        src={product.photos.find(p => p.isPrimary)?.url || product.photos[0].url}
+                        alt={product.name}
+                        fill
+                        style={{ objectFit: 'cover' }}
+                      />
+                    </div>
+                  ) : null}
+                  <h3>{product.name}</h3>
+                  <p>₹{product.price.toLocaleString()}</p>
+                </div>
+              </Link>
+            ))
+          ) : (
+            <p style={{ color: '#888' }}>No featured products available.</p>
           )}
         </div>
       </section>

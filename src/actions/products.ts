@@ -1,6 +1,6 @@
 "use server";
 
-import { PrismaClient, Prisma, ProductTag } from "@prisma/client";
+import { PrismaClient, Prisma } from "@prisma/client";
 
 let prisma: PrismaClient;
 declare global {
@@ -45,7 +45,7 @@ export type ProductFilters = {
   minPrice?: number;
   maxPrice?: number;
   search?: string;
-  tag?: ProductTag;
+  tag?: string;
   sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC";
 };
 
@@ -96,7 +96,7 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefi
     };
   }
   if (filters.tag) {
-    where.tag = filters.tag as ProductTag;
+    where.tag = filters.tag;
   }
   if (filters.search && filters.search.trim().length > 0) {
     const q = filters.search.trim();
@@ -287,10 +287,10 @@ export async function updateProductAction(
   const quantityStr = (formData.get("quantity") as string) ?? undefined;
   const licenseRequiredStr = (formData.get("licenseRequired") as string) ?? undefined;
   const tag = (formData.get("tag") as string) || null;
-  const brandId = (formData.get("brandId") as string) ?? undefined;
-  const typeId = (formData.get("typeId") as string) ?? undefined;
-  const caliberId = (formData.get("caliberId") as string) ?? undefined;
-  const categoryId = (formData.get("categoryId") as string) ?? undefined;
+  const brandName = (formData.get("brandName") as string)?.trim() ?? undefined;
+  const typeName = (formData.get("typeName") as string)?.trim() ?? undefined;
+  const caliberName = (formData.get("caliberName") as string)?.trim() ?? undefined;
+  const categoryName = (formData.get("categoryName") as string)?.trim() ?? undefined;
   const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
@@ -300,7 +300,7 @@ export async function updateProductAction(
     price?: number;
     quantity?: number;
     licenseRequired?: boolean;
-    tag?: "NEW" | "TOP_SELLER" | null;
+    tag?: string | null;
     brand?: { connect: { id: string } };
     type?: { connect: { id: string } };
     caliber?: { connect: { id: string } };
@@ -315,12 +315,41 @@ export async function updateProductAction(
   if (typeof priceStr === "string" && priceStr.trim() !== "") data.price = Number(priceStr);
   if (typeof quantityStr === "string" && quantityStr.trim() !== "") data.quantity = Number(quantityStr);
   if (typeof licenseRequiredStr === "string") data.licenseRequired = licenseRequiredStr === "on" || licenseRequiredStr === "true";
-  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag as "NEW" | "TOP_SELLER"; else if (tag === "") data.tag = null;
+  if (tag !== null && tag !== undefined && tag !== "") data.tag = tag; else if (tag === "") data.tag = null;
 
-  if (brandId) data.brand = { connect: { id: brandId } };
-  if (typeId) data.type = { connect: { id: typeId } };
-  if (caliberId) data.caliber = { connect: { id: caliberId } };
-  if (categoryId) data.category = { connect: { id: categoryId } };
+  // Find or create entities by name if provided
+  if (brandName) {
+    const brand = await prisma.brand.upsert({
+      where: { name: brandName },
+      update: {},
+      create: { name: brandName },
+    });
+    data.brand = { connect: { id: brand.id } };
+  }
+  if (typeName) {
+    const type = await prisma.type.upsert({
+      where: { name: typeName },
+      update: {},
+      create: { name: typeName },
+    });
+    data.type = { connect: { id: type.id } };
+  }
+  if (caliberName) {
+    const caliber = await prisma.caliber.upsert({
+      where: { name: caliberName },
+      update: {},
+      create: { name: caliberName },
+    });
+    data.caliber = { connect: { id: caliber.id } };
+  }
+  if (categoryName) {
+    const category = await prisma.category.upsert({
+      where: { name: categoryName },
+      update: {},
+      create: { name: categoryName },
+    });
+    data.category = { connect: { id: category.id } };
+  }
 
   // Handle related products
   if (relatedProductIds !== undefined) {
@@ -412,6 +441,157 @@ export async function getAllProductsForSelector() {
   return products;
 }
 
+// Get all brands for autocomplete (admin-only)
+export async function getAllBrandsForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const brands = await prisma.brand.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return brands.map(b => b.name);
+}
+
+// Get all types for autocomplete (admin-only)
+export async function getAllTypesForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const types = await prisma.type.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return types.map(t => t.name);
+}
+
+// Get all calibers for autocomplete (admin-only)
+export async function getAllCalibersForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const calibers = await prisma.caliber.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return calibers.map(c => c.name);
+}
+
+// Get all categories for autocomplete (admin-only)
+export async function getAllCategoriesForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const categories = await prisma.category.findMany({
+    select: {
+      name: true,
+    },
+    orderBy: {
+      name: "asc",
+    },
+  });
+
+  return categories.map(c => c.name);
+}
+
+// Get all available tags (including enum values and any custom ones if needed)
+export async function getAllTagsForSelector() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  // Return the enum values plus any custom tags found in the database
+  const enumTags = ["NEW", "TOP_SELLER"];
+  
+  // Get unique tags from existing products
+  const customTags = await prisma.product.findMany({
+    where: {
+      tag: {
+        not: null,
+      },
+    },
+    select: {
+      tag: true,
+    },
+    distinct: ["tag"],
+  });
+
+  const allTags = [...new Set([...enumTags, ...customTags.map(p => p.tag).filter(Boolean)])];
+  return allTags as string[];
+}
+
+// Add a new tag (admin-only) - Note: This is more of a validation function
+// since tags are stored directly on products
+export async function addNewTagAction(tagName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    throw new Error("Unauthorized");
+  }
+  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
+  if (!allowedAdmins.includes(session.user.email)) {
+    throw new Error("Forbidden");
+  }
+
+  const normalizedTag = tagName.trim().toUpperCase().replace(/\s+/g, "_");
+  
+  if (!normalizedTag) {
+    throw new Error("Tag name cannot be empty");
+  }
+
+  // Validate tag format (alphanumeric and underscores only)
+  if (!/^[A-Z0-9_]+$/.test(normalizedTag)) {
+    throw new Error("Tag can only contain letters, numbers, and underscores");
+  }
+
+  // Return the normalized tag name to confirm it's valid
+  // The actual tag will be saved when the product is created/updated
+  return normalizedTag;
+}
+
 // Create a product (admin-only)
 export async function createProductAction(formData: FormData) {
   const session = await getServerSession(authOptions);
@@ -429,14 +609,14 @@ export async function createProductAction(formData: FormData) {
   const quantityStr = (formData.get("quantity") as string | null)?.trim() || "";
   const licenseRequiredStr = (formData.get("licenseRequired") as string | null) || null;
   const tag = ((formData.get("tag") as string | null)?.trim() || "") || null;
-  const brandId = (formData.get("brandId") as string | null)?.trim() || "";
-  const typeId = (formData.get("typeId") as string | null)?.trim() || "";
-  const caliberId = (formData.get("caliberId") as string | null)?.trim() || "";
-  const categoryId = (formData.get("categoryId") as string | null)?.trim() || "";
+  const brandName = (formData.get("brandName") as string | null)?.trim() || "";
+  const typeName = (formData.get("typeName") as string | null)?.trim() || "";
+  const caliberName = (formData.get("caliberName") as string | null)?.trim() || "";
+  const categoryName = (formData.get("categoryName") as string | null)?.trim() || "";
   const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
-  if (!name || !description || !priceStr || !quantityStr || !brandId || !typeId || !caliberId || !categoryId) {
+  if (!name || !description || !priceStr || !quantityStr || !brandName || !typeName || !caliberName || !categoryName) {
     throw new Error("All fields except image are required");
   }
 
@@ -445,13 +625,37 @@ export async function createProductAction(formData: FormData) {
   if (!Number.isFinite(price) || price < 0) throw new Error("Invalid price");
   if (!Number.isInteger(quantity) || quantity < 0) throw new Error("Invalid quantity");
 
+  // Find or create Brand, Type, Caliber, and Category by name
+  const [brand, type, caliber, category] = await Promise.all([
+    prisma.brand.upsert({
+      where: { name: brandName },
+      update: {},
+      create: { name: brandName },
+    }),
+    prisma.type.upsert({
+      where: { name: typeName },
+      update: {},
+      create: { name: typeName },
+    }),
+    prisma.caliber.upsert({
+      where: { name: caliberName },
+      update: {},
+      create: { name: caliberName },
+    }),
+    prisma.category.upsert({
+      where: { name: categoryName },
+      update: {},
+      create: { name: categoryName },
+    }),
+  ]);
+
   type CreateData = {
     name: string;
     description: string;
     price: number;
     quantity: number;
     licenseRequired: boolean;
-    tag?: "NEW" | "TOP_SELLER";
+    tag?: string;
     brand: { connect: { id: string } };
     type: { connect: { id: string } };
     caliber: { connect: { id: string } };
@@ -466,11 +670,11 @@ export async function createProductAction(formData: FormData) {
     price,
     quantity,
     licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
-    tag: tag ? (tag as "NEW" | "TOP_SELLER") : undefined,
-    brand: { connect: { id: brandId } },
-    type: { connect: { id: typeId } },
-    caliber: { connect: { id: caliberId } },
-    category: { connect: { id: categoryId } },
+    tag: tag || undefined,
+    brand: { connect: { id: brand.id } },
+    type: { connect: { id: type.id } },
+    caliber: { connect: { id: caliber.id } },
+    category: { connect: { id: category.id } },
   };
 
   // Handle related products
