@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KGH",
+  title: "Kathuria Gun House",
   description: "Premium Arms Dealers",
 };
 
