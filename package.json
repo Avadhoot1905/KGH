@@ -17,7 +17,7 @@
     "fuse.js": "^7.1.0",
     "lucide-react": "^0.545.0",
     "mongodb": "^5.9.2",
-    "next": "15.3.3",
+    "next": "^15.5.9",
     "next-auth": "^4.24.11",
     "razorpay": "^2.9.6",
     "react": "^19.0.0",
