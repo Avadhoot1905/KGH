@@ -10,6 +10,7 @@
  */
 
 import { PrismaClient } from "@prisma/client";
+import { isAdmin } from "@/lib/adminAuth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { revalidatePath } from "next/cache";
@@ -183,8 +184,8 @@ export async function getAllAppointments() {
     throw new Error("Unauthorized");
   }
 
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -213,8 +214,8 @@ export async function approveAppointment(appointmentId: string) {
     throw new Error("Unauthorized");
   }
 
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -247,8 +248,8 @@ export async function declineAppointment(appointmentId: string) {
     throw new Error("Unauthorized");
   }
 
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -281,8 +282,8 @@ export async function getAppointmentStats() {
     throw new Error("Unauthorized");
   }
 
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
