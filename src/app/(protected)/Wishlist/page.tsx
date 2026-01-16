@@ -30,6 +30,20 @@ export default function WishlistPage() {
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
 
+  function formatPrice(price: string | number) {
+    const formatter = new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 });
+    if (typeof price === 'number') return formatter.format(price);
+    const trimmed = (price || "").toString().trim();
+    if (trimmed.startsWith("$")) {
+      const num = parseFloat(trimmed.replace(/[^0-9.-]+/g, ""));
+      if (!isNaN(num)) return formatter.format(num);
+      return trimmed.replace(/^\$\s?/, '₹');
+    }
+    const numeric = parseFloat(trimmed.replace(/[^0-9.-]+/g, ""));
+    if (!isNaN(numeric)) return formatter.format(numeric);
+    return trimmed.replace(/\$/g, '₹');
+  }
+
   const loadData = async () => {
     try {
       const [items, recs] = await Promise.all([
@@ -88,7 +102,7 @@ export default function WishlistPage() {
                 </div>
               {item.tag && <span className="wishlist-tag">{item.tag}</span>}
               <h3 className="wishlist-title">{item.name}</h3>
-              <p className="wishlist-price">{item.price}</p>
+              <p className="wishlist-price">{formatPrice(item.price)}</p>
               {item.license && (
                 <p className="wishlist-license">🔒 License Required</p>
               )}
@@ -135,7 +149,7 @@ export default function WishlistPage() {
                     </div>
                     <h4>{rec.name}</h4>
                     <p className="recommend-meta">{rec.brand} • {rec.type}</p>
-                    <p className="recommend-price">{rec.price}</p>
+                    <p className="recommend-price">{formatPrice(rec.price)}</p>
                   </div>
                 </Link>
               ))}

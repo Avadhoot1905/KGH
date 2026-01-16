@@ -12,21 +12,8 @@ if (typeof window === 'undefined') {
       const path = await import('path');
       const _heroPath = path.join(process.cwd(), 'public', 'photos', 'hero.png');
       const _hero1Path = path.join(process.cwd(), 'public', 'photos', 'hero1.png');
-
-      if (fs.existsSync(_heroPath)) {
-        console.log('✅ Desktop hero found at public/photos/hero.png');
-      } else {
-        console.warn('⚠️ Desktop hero NOT found at public/photos/hero.png');
-      }
-
-      if (fs.existsSync(_hero1Path)) {
-        console.log('✅ Mobile hero found at public/photos/hero1.png');
-      } else {
-        console.warn('⚠️ Mobile hero NOT found at public/photos/hero1.png');
-      }
     } catch (err) {
       const errMsg = err instanceof Error ? err.message : String(err);
-      console.warn('⚠️ Could not verify hero images:', errMsg);
     }
   })();
 }
@@ -144,14 +131,14 @@ export default async function Home() {
               <Link
                 key={i}
                 href={`/Shop?category=${encodeURIComponent(cat.name)}`}
-                className="w-full max-w-[180px]"
+                className="w-full max-w-[180px] h-44 md:h-auto"
               >
-                <div className="bg-[#1a1a1a] p-6 rounded-xl shadow-md hover:shadow-red-500/40 transition transform hover:-translate-y-1">
+                <div className="bg-[#1a1a1a] p-6 rounded-xl shadow-md hover:shadow-red-500/40 transition transform hover:-translate-y-1 flex flex-col items-center justify-between h-full">
                   <div className="flex justify-center mb-4">
                     <Icon size={38} className="text-red-500" />
                   </div>
-                  <h3 className="font-semibold text-lg">{cat.name}</h3>
-                  <p className="text-sm text-gray-400 mt-1">{cat.sub}</p>
+                  <h3 className="font-semibold text-lg text-center">{cat.name}</h3>
+                  <p className="text-sm text-gray-400 mt-1 text-center">{cat.sub}</p>
                 </div>
               </Link>
             );
@@ -165,7 +152,7 @@ export default async function Home() {
           {featuredProducts.items.length > 0 ? (
             featuredProducts.items.map((product) => (
               <Link key={product.id} href={`/ProductDetail/${product.id}`}>
-                <div className="product-card">
+                <div className="product-card h-64 md:h-auto flex flex-col justify-between">
                   {product.photos.length > 0 ? (
                     <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '10px' }}>
                       <Image 
@@ -176,7 +163,7 @@ export default async function Home() {
                       />
                     </div>
                   ) : null}
-                  <h3>{product.name}</h3>
+                  <h3 className="truncate">{product.name}</h3>
                   <p>₹{product.price.toLocaleString()}</p>
                 </div>
               </Link>

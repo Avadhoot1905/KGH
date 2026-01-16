@@ -162,7 +162,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
           </div>
           <p className="text-sm text-gray-600 dark:text-gray-300 mt-1 line-clamp-2" title={product.description}>{product.description}</p>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm mt-3">
-            <div><span className="text-gray-500 dark:text-gray-400">Price:</span> ${product.price.toFixed(2)}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Price:</span> ₹{product.price.toFixed(2)}</div>
             <div><span className="text-gray-500 dark:text-gray-400">Qty:</span> {product.quantity}</div>
             <div><span className="text-gray-500 dark:text-gray-400">License:</span> {product.licenseRequired ? "Required" : "No"}</div>
             <div><span className="text-gray-500 dark:text-gray-400">Brand:</span> {product.brand?.name}</div>

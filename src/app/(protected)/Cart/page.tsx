@@ -95,9 +95,9 @@ export default function Cart() {
                       >+</button>
                     </div>
                     <div className="cart-item-price">
-                      <span className="price">${item.price.toFixed(2)}</span>
+                      <span className="price">₹{item.price.toFixed(2)}</span>
                       {item.oldPrice && (
-                        <span className="old-price">${item.oldPrice.toFixed(2)}</span>
+                        <span className="old-price">₹{item.oldPrice.toFixed(2)}</span>
                       )}
                     </div>
                   </div>
@@ -121,19 +121,19 @@ export default function Cart() {
               <h3>Order Summary</h3>
               <div className="summary-row">
                 <span>Subtotal</span>
-                <span>${subtotal.toFixed(2)}</span>
+                <span>₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="summary-row">
                 <span>Shipping</span>
-                <span>${shipping.toFixed(2)}</span>
+                <span>₹{shipping.toFixed(2)}</span>
               </div>
               <div className="summary-row">
                 <span>Tax</span>
-                <span>${tax.toFixed(2)}</span>
+                <span>₹{tax.toFixed(2)}</span>
               </div>
               <div className="summary-row total">
                 <span>Total</span>
-                <span>${total.toFixed(2)}</span>
+                <span>₹{total.toFixed(2)}</span>
               </div>
               <button className="checkout-btn">Proceed to Checkout</button>
               <button className="continue-btn">Continue Shopping</button>
