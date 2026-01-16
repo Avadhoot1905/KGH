@@ -7,7 +7,10 @@ import { FaTrash } from 'react-icons/fa';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
+import { checkUserAuthentication } from '@/actions/payments';
 import Image from 'next/image';
+import Script from 'next/script';
+import { useSession } from 'next-auth/react';
 
 interface CartItem {
   id: string | number;
@@ -20,9 +23,19 @@ interface CartItem {
   image: string;
 }
 
+// Declare Razorpay type for TypeScript
+declare global {
+  interface Window {
+    Razorpay: any;
+  }
+}
+
 export default function Cart() {
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const { data: session, status } = useSession();
 
   useEffect(() => {
     let mounted = true;
@@ -44,8 +57,113 @@ export default function Cart() {
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
 
+  /**
+   * Handle checkout button click
+   * Creates a Razorpay order on the backend and opens checkout
+   */
+  const handleCheckout = async () => {
+    if (isProcessing) return;
+
+    // Check if user is authenticated
+    if (status !== 'authenticated' || !session?.user) {
+      alert('Please sign in to proceed with checkout');
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+
+      // Step 1: Create order on backend
+      const response = await fetch('/api/payments/create-order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Failed to create order');
+      }
+
+      const data = await response.json();
+
+      // Step 2: Open Razorpay Checkout
+      if (!window.Razorpay) {
+        alert('Payment gateway not loaded. Please refresh and try again.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const options = {
+        key: data.key, // Razorpay Key ID from backend
+        amount: data.amount, // Amount in paise
+        currency: data.currency,
+        order_id: data.orderId, // Order ID from Razorpay
+        name: 'KGH Store',
+        description: 'Purchase from KGH',
+        image: '/logo.png', // Your logo
+        handler: function (response: any) {
+          // Frontend handler - DO NOT mark payment as successful here
+          // Only show UI feedback while webhook processes the payment
+          handlePaymentResponse(response);
+        },
+        prefill: {
+          name: session.user.name || '',
+          email: session.user.email || '',
+          contact: '',
+        },
+        theme: {
+          color: '#FF0000',
+        },
+        modal: {
+          ondismiss: function () {
+            setIsProcessing(false);
+          },
+        },
+      };
+
+      const razorpay = new window.Razorpay(options);
+      razorpay.open();
+    } catch (error) {
+      console.error('Checkout error:', error);
+      alert(error instanceof Error ? error.message : 'Failed to initiate checkout. Please try again.');
+      setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Handle payment response from Razorpay
+   * NOTE: This is NOT the source of truth!
+   * The webhook will actually verify and process the payment.
+   */
+  const handlePaymentResponse = async (response: any) => {
+    try {
+      // Show success message to user
+      alert('Payment initiated! Processing your order...');
+      
+      // Clear cart items from UI
+      setCartItems([]);
+      setIsProcessing(false);
+
+      // Redirect to orders page or success page
+      // The webhook will process the actual payment verification
+      window.location.href = '/profile'; // Redirect to profile/orders
+    } catch (error) {
+      console.error('Error handling payment response:', error);
+      setIsProcessing(false);
+    }
+  };
+
   return (
     <>
+      {/* Load Razorpay Checkout Script */}
+      <Script
+        src="https://checkout.razorpay.com/v1/checkout.js"
+        onLoad={() => setRazorpayLoaded(true)}
+        strategy="lazyOnload"
+      />
+
       <Navbar />
 
       <div className="cart-container">
@@ -135,8 +253,20 @@ export default function Cart() {
                 <span>Total</span>
                 <span>₹{total.toFixed(2)}</span>
               </div>
-              <button className="checkout-btn">Proceed to Checkout</button>
-              <button className="continue-btn">Continue Shopping</button>
+              <button 
+                className="checkout-btn" 
+                onClick={handleCheckout}
+                disabled={isProcessing || !razorpayLoaded || status !== 'authenticated'}
+              >
+                {isProcessing 
+                  ? 'Processing...' 
+                  : status !== 'authenticated' 
+                  ? 'Please Sign In' 
+                  : 'Proceed to Checkout'}
+              </button>
+              <Link href="/Shop">
+                <button className="continue-btn">Continue Shopping</button>
+              </Link>
               <p className="secure-text">🔒 Secure checkout with SSL encryption</p>
             </div>
           )}

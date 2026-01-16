@@ -4,6 +4,7 @@ import { ReactNode } from "react";
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/auth";
+import { isAdmin } from "@/lib/adminAuth";
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
   const session = await getServerSession(authOptions);
@@ -12,15 +13,8 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     redirect("/");
   }
 
-  // Place allowed admin emails here:
-//   const allowedAdmins = [
-//     "arcsmo19@gmail.com"
-//     "admin2@example.com",
-//   ];
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com","ojasvikathuria777@gmail.com"];
-
-  const userEmail = session.user.email as string;
-  if (!allowedAdmins.includes(userEmail)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     redirect("/");
   }
 

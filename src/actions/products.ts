@@ -1,6 +1,7 @@
 "use server";
 
 import { PrismaClient, Prisma } from "@prisma/client";
+import { isAdmin } from "@/lib/adminAuth";
 
 let prisma: PrismaClient;
 declare global {
@@ -271,13 +272,8 @@ export async function updateProductAction(
     throw new Error("Unauthorized");
   }
 
-  // Place allowed admin emails here (same as (admin)/layout.tsx)
-  // const allowedAdmins = [
-  //   "arcsmo19@gmail.com",
-  // ];
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com","ojasvikathuria777@gmail.com"]; // keep in sync
-
-  if (!allowedAdmins.includes(session.user.email)) {
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -404,8 +400,9 @@ export async function deleteProductAction(productId: string) {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync with admin layout
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -423,8 +420,9 @@ export async function getAllProductsForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -447,8 +445,9 @@ export async function getAllBrandsForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -470,8 +469,9 @@ export async function getAllTypesForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -493,8 +493,9 @@ export async function getAllCalibersForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -516,8 +517,9 @@ export async function getAllCategoriesForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -539,8 +541,9 @@ export async function getAllTagsForSelector() {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -571,8 +574,9 @@ export async function addNewTagAction(tagName: string) {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com", "ojasvikathuria777@gmail.com"];
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 
@@ -598,8 +602,9 @@ export async function createProductAction(formData: FormData) {
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
   }
-  const allowedAdmins: string[] = ["arcsmo19@gmail.com"]; // keep in sync
-  if (!allowedAdmins.includes(session.user.email)) {
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) {
     throw new Error("Forbidden");
   }
 

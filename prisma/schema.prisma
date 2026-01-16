@@ -179,14 +179,16 @@ model Review {
 }
 
 model Order {
-  id        String      @id @default(cuid())
-  userId    String
-  total     Float
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-  user      User        @relation(fields: [userId], references: [id])
-  items     OrderItem[]
+  id               String      @id @default(cuid())
+  userId           String
+  total            Float
+  status           OrderStatus @default(PENDING)
+  razorpayOrderId  String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  user             User        @relation(fields: [userId], references: [id])
+  items            OrderItem[]
+  payment          Payment?
 }
 
 model OrderItem {
@@ -206,8 +208,34 @@ enum Role {
 
 enum OrderStatus {
   PENDING
+  PAID
   COMPLETED
   CANCELLED
+  FAILED
+}
+
+model Payment {
+  id                String   @id @default(cuid())
+  orderId           String   @unique
+  razorpayPaymentId String?  @unique
+  razorpaySignature String?
+  status            PaymentStatus @default(PENDING)
+  amount            Float
+  currency          String   @default("INR")
+  eventPayload      String?  @db.Text
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  order             Order    @relation(fields: [orderId], references: [id])
+
+  @@index([razorpayPaymentId])
+  @@map("payments")
+}
+
+enum PaymentStatus {
+  PENDING
+  CAPTURED
+  FAILED
+  REFUNDED
 }
 
 enum AppointmentStatus {
