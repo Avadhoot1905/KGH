@@ -8,12 +8,10 @@ import { Target, Crosshair, Package, Eye } from 'lucide-react';
 if (typeof window === 'undefined') {
   (async () => {
     try {
-      const fs = await import('fs');
-      const path = await import('path');
-      const _heroPath = path.join(process.cwd(), 'public', 'photos', 'hero.png');
-      const _hero1Path = path.join(process.cwd(), 'public', 'photos', 'hero1.png');
+      await import('fs');
+      await import('path');
     } catch (err) {
-      const errMsg = err instanceof Error ? err.message : String(err);
+      err instanceof Error ? err.message : String(err);
     }
   })();
 }

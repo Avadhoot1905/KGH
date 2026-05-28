@@ -244,7 +244,7 @@ export async function getSearchIndex() {
     orderBy: { createdAt: "desc" },
     take: 500,
   });
-  return products.map((p) => ({
+  return products.map((p: { id: string; name: string; description: string; price: number; brand: { name: string } | null; type: { name: string } | null; category: { name: string } | null; photos: { url: string; isPrimary: boolean }[] }) => ({
     id: p.id,
     name: p.name,
     description: p.description,
@@ -252,7 +252,7 @@ export async function getSearchIndex() {
     brandName: p.brand?.name ?? null,
     typeName: p.type?.name ?? null,
     categoryName: p.category?.name ?? null,
-    photoUrl: (p.photos.find(ph => ph.isPrimary) ?? p.photos[0])?.url ?? null,
+    photoUrl: (p.photos.find((ph: { url: string; isPrimary: boolean }) => ph.isPrimary) ?? p.photos[0])?.url ?? null,
   }));
 }
 
@@ -460,7 +460,7 @@ export async function getAllBrandsForSelector() {
     },
   });
 
-  return brands.map(b => b.name);
+  return brands.map((b: { name: string }) => b.name);
 }
 
 // Get all types for autocomplete (admin-only)
@@ -484,7 +484,7 @@ export async function getAllTypesForSelector() {
     },
   });
 
-  return types.map(t => t.name);
+  return types.map((t: { name: string }) => t.name);
 }
 
 // Get all calibers for autocomplete (admin-only)
@@ -508,7 +508,7 @@ export async function getAllCalibersForSelector() {
     },
   });
 
-  return calibers.map(c => c.name);
+  return calibers.map((c: { name: string }) => c.name);
 }
 
 // Get all categories for autocomplete (admin-only)
@@ -532,7 +532,7 @@ export async function getAllCategoriesForSelector() {
     },
   });
 
-  return categories.map(c => c.name);
+  return categories.map((c: { name: string }) => c.name);
 }
 
 // Get all available tags (including enum values and any custom ones if needed)
@@ -563,7 +563,7 @@ export async function getAllTagsForSelector() {
     distinct: ["tag"],
   });
 
-  const allTags = [...new Set([...enumTags, ...customTags.map(p => p.tag).filter(Boolean)])];
+  const allTags = [...new Set([...enumTags, ...customTags.map((p: { tag: string | null }) => p.tag).filter(Boolean)])];
   return allTags as string[];
 }
 
@@ -719,4 +719,3 @@ export async function createProductAction(formData: FormData) {
 
   revalidatePath("/mod");
 }
-

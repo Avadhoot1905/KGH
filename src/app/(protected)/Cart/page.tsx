@@ -7,7 +7,6 @@ import { FaTrash } from 'react-icons/fa';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
-import { checkUserAuthentication } from '@/actions/payments';
 import Image from 'next/image';
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
@@ -24,9 +23,39 @@ interface CartItem {
 }
 
 // Declare Razorpay type for TypeScript
+interface RazorpayOptions {
+  key: string;
+  amount: number;
+  currency: string;
+  order_id: string;
+  name: string;
+  description: string;
+  image: string;
+  handler: (response: unknown) => void;
+  prefill: {
+    name: string;
+    email: string;
+    contact: string;
+  };
+  theme: {
+    color: string;
+  };
+  modal: {
+    ondismiss: () => void;
+  };
+}
+
+interface RazorpayInstance {
+  open: () => void;
+}
+
+interface RazorpayConstructor {
+  new (options: RazorpayOptions): RazorpayInstance;
+}
+
 declare global {
   interface Window {
-    Razorpay: any;
+    Razorpay: RazorpayConstructor;
   }
 }
 
@@ -42,7 +71,7 @@ export default function Cart() {
     (async () => {
       try {
         const items = await getMyCartItems();
-        if (mounted) setCartItems(items as unknown as CartItem[]);
+        if (mounted) setCartItems(items);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -53,7 +82,7 @@ export default function Cart() {
   }, []);
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
-  const shipping = 9.99;
+  const shipping = 1.00;
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
 
@@ -103,10 +132,10 @@ export default function Cart() {
         name: 'KGH Store',
         description: 'Purchase from KGH',
         image: '/logo.png', // Your logo
-        handler: function (response: any) {
+        handler: function (response: unknown) {
           // Frontend handler - DO NOT mark payment as successful here
           // Only show UI feedback while webhook processes the payment
-          handlePaymentResponse(response);
+          handlePaymentResponse();
         },
         prefill: {
           name: session.user.name || '',
@@ -137,7 +166,7 @@ export default function Cart() {
    * NOTE: This is NOT the source of truth!
    * The webhook will actually verify and process the payment.
    */
-  const handlePaymentResponse = async (response: any) => {
+  const handlePaymentResponse = async () => {
     try {
       // Show success message to user
       alert('Payment initiated! Processing your order...');

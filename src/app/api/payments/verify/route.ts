@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
       where: {
         razorpayOrderId: razorpay_order_id,
         userId: user.id,
-      } as any,
+      },
     });
 
     if (!order) {

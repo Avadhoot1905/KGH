@@ -10,7 +10,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-export async function POST(req: NextRequest) {
+export async function POST(_req: NextRequest) {
   try {
     // Authenticate user
     const session = await getServerSession(authOptions);
@@ -55,7 +55,7 @@ export async function POST(req: NextRequest) {
 
     // Calculate total amount securely on the server
     const subtotal = cartItems.reduce(
-      (acc, item) => acc + item.product.price * item.quantity,
+      (acc: number, item: { product: { price: number }, quantity: number }) => acc + item.product.price * item.quantity,
       0
     );
     const shipping = 9.99;
@@ -84,17 +84,17 @@ export async function POST(req: NextRequest) {
         status: 'PENDING',
         razorpayOrderId: razorpayOrder.id,
         items: {
-          create: cartItems.map((item) => ({
+          create: cartItems.map((item: { product: { id: string, price: number }, quantity: number }) => ({
             productId: item.product.id,
             quantity: item.quantity,
             price: item.product.price,
           })),
         },
-      } as any,
+      },
     });
 
     // Create payment record with PENDING status
-    await (prisma as any).payment.create({
+    await prisma.payment.create({
       data: {
         orderId: order.id,
         amount: total,
@@ -118,3 +118,4 @@ export async function POST(req: NextRequest) {
     );
   }
 }
+

@@ -83,14 +83,14 @@ export async function POST(req: NextRequest) {
  * Handle successful payment capture
  * This is where we mark the order as PAID and grant user access
  */
-async function handlePaymentCaptured(payload: any, eventPayload: string) {
-  const { order_id, id: paymentId, amount, currency } = payload;
+async function handlePaymentCaptured(payload: unknown, eventPayload: string) {
+  const { order_id, id: paymentId, amount, currency } = payload as { order_id: string; id: string; amount: number; currency: string };
 
   try {
     // Find the order by Razorpay order ID
-    const order: any = await prisma.order.findFirst({
-      where: { razorpayOrderId: order_id } as any,
-      include: { payment: true } as any,
+    const order = await prisma.order.findFirst({
+      where: { razorpayOrderId: order_id },
+      include: { payment: true },
     });
 
     if (!order) {
@@ -109,11 +109,11 @@ async function handlePaymentCaptured(payload: any, eventPayload: string) {
       // Update order status to PAID
       prisma.order.update({
         where: { id: order.id },
-        data: { status: 'PAID' as any },
+        data: { status: 'PAID' },
       }),
 
       // Update payment with captured details
-      (prisma as any).payment.update({
+      prisma.payment.update({
         where: { orderId: order.id },
         data: {
           razorpayPaymentId: paymentId,
@@ -152,13 +152,13 @@ async function handlePaymentCaptured(payload: any, eventPayload: string) {
 /**
  * Handle failed payments
  */
-async function handlePaymentFailed(payload: any, eventPayload: string) {
-  const { order_id, id: paymentId, error_description } = payload;
+async function handlePaymentFailed(payload: unknown, eventPayload: string) {
+  const { order_id, id: paymentId, error_description } = payload as { order_id: string; id: string; error_description: string };
 
   try {
     const order = await prisma.order.findFirst({
-      where: { razorpayOrderId: order_id } as any,
-      include: { payment: true } as any,
+      where: { razorpayOrderId: order_id },
+      include: { payment: true },
     });
 
     if (!order) {
@@ -170,10 +170,10 @@ async function handlePaymentFailed(payload: any, eventPayload: string) {
     await prisma.$transaction([
       prisma.order.update({
         where: { id: order.id },
-        data: { status: 'FAILED' as any },
+        data: { status: 'FAILED' },
       }),
 
-      (prisma as any).payment.update({
+      prisma.payment.update({
         where: { orderId: order.id },
         data: {
           razorpayPaymentId: paymentId,
