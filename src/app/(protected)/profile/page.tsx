@@ -77,6 +77,7 @@ export default function ProfilePage() {
         <button 
             onClick={handleLogout}
             className="w-full flex items-center justify-center gap-2 bg-gray-800 hover:bg-gray-700 py-2 rounded-lg font-medium"
+            suppressHydrationWarning={true}
           >
             <LogOut size={16} /> Logout
           </button>
@@ -95,6 +96,7 @@ export default function ProfilePage() {
                   ? "text-red-500 border-b-2 border-red-600"
                   : "text-gray-400 hover:text-white"
               }`}
+              suppressHydrationWarning={true}
             >
               Your Orders
             </button>
@@ -105,6 +107,7 @@ export default function ProfilePage() {
                   ? "text-red-500 border-b-2 border-red-600"
                   : "text-gray-400 hover:text-white"
               }`}
+              suppressHydrationWarning={true}
             >
               <RotateCcw size={16} /> Returns
             </button>
@@ -115,6 +118,7 @@ export default function ProfilePage() {
                   ? "text-red-500 border-b-2 border-red-600"
                   : "text-gray-400 hover:text-white"
               }`}
+              suppressHydrationWarning={true}
             >
               <Heart size={16} /> Wishlist
             </button>
@@ -137,6 +141,7 @@ export default function ProfilePage() {
                       ? "bg-red-600 text-white"
                       : "bg-gray-800 text-gray-400 hover:bg-gray-700"
                   }`}
+                  suppressHydrationWarning={true}
                 >
                   {tab}
                 </button>
