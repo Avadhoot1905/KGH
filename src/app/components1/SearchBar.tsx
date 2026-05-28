@@ -177,6 +177,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
           onBlur={(e) => {
             e.target.style.borderColor = "#333";
           }}
+          suppressHydrationWarning={true}
           onKeyDown={(e) => {
             if (e.key === "ArrowDown") {
               e.preventDefault();

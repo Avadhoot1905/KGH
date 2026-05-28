@@ -82,7 +82,7 @@ export default function Cart() {
   }, []);
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
-  const shipping = 1.00;
+  const shipping = 1;
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
 
