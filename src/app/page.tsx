@@ -96,7 +96,7 @@ export default async function Home() {
 
           <div className="flex flex-wrap gap-4 mt-6">
             <Link href="/Shop">
-              <button className="bg-red-500 hover:bg-red-600 px-6 py-3 font-semibold rounded">
+              <button suppressHydrationWarning className="bg-red-500 hover:bg-red-600 px-6 py-3 font-semibold rounded">
                 SHOP NOW
               </button>
             </Link>
@@ -106,7 +106,7 @@ export default async function Home() {
               target="_blank"
               rel="noopener noreferrer"
             >
-              <button className="bg-white text-black px-6 py-3 font-semibold rounded hover:bg-gray-200">
+              <button suppressHydrationWarning className="bg-white text-black px-6 py-3 font-semibold rounded hover:bg-gray-200">
                 Visit our Youtube Channel
               </button>
             </a>

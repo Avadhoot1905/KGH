@@ -111,9 +111,11 @@ export async function POST(_req: NextRequest) {
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     });
   } catch (error) {
-    console.error('Error creating order:', error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    console.error('❌ Error creating order:', errorMessage);
+    console.error('Full error:', error);
     return NextResponse.json(
-      { error: 'Failed to create order. Please try again.' },
+      { error: `Failed to create order: ${errorMessage}` },
       { status: 500 }
     );
   }

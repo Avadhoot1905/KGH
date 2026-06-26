@@ -9,6 +9,7 @@ import Footer from "@/app/components1/Footer";
 import { getCurrentUser, type CurrentUser } from "@/actions/auth";
 import { getAllOrders, type OrderListItem } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
+import { getOrderStatusLabel, isOrderSuccessful } from "@/lib/orderStatus";
 
 export default function ProfilePage() {
   const [activeSection, setActiveSection] = useState<"orders" | "returns" | "wishlist">("orders");
@@ -44,8 +45,8 @@ export default function ProfilePage() {
 
   const getFilteredOrders = () => {
     if (activeTab === "all") return orders;
-    if (activeTab === "delivered") return orders.filter(order => order.status === "COMPLETED");
-    if (activeTab === "pending") return orders.filter(order => order.status === "PENDING");
+    if (activeTab === "delivered") return orders.filter(order => isOrderSuccessful(order.status));
+    if (activeTab === "pending") return orders.filter(order => order.status === "PENDING" || order.status === "PAID");
     return orders;
   };
 
@@ -168,14 +169,16 @@ export default function ProfilePage() {
                         <p className="text-lg font-bold">{order.total}</p>
                         <span
                           className={`text-sm px-2 py-1 rounded-full ${
-                            order.status === "COMPLETED"
+                            isOrderSuccessful(order.status)
                               ? "bg-green-600 text-white"
                               : order.status === "PENDING"
                               ? "bg-yellow-600 text-white"
+                              : order.status === "PAID"
+                              ? "bg-blue-600 text-white"
                               : "bg-red-600 text-white"
                           }`}
                         >
-                          {order.status === "COMPLETED" ? "Delivered" : order.status === "PENDING" ? "In Transit" : "Cancelled"}
+                          {getOrderStatusLabel(order.status)}
                         </span>
                       </div>
                     </div>
@@ -198,11 +201,11 @@ export default function ProfilePage() {
                             </p>
                           </div>
                           <div className="text-right">
-                            {order.status === "COMPLETED" ? (
+                            {isOrderSuccessful(order.status) ? (
                               <button className="bg-red-600 hover:bg-red-700 text-sm px-3 py-1 rounded-lg font-medium">
                                 Reorder
                               </button>
-                            ) : order.status === "PENDING" ? (
+                            ) : order.status === "PENDING" || order.status === "PAID" ? (
                               <button className="bg-gray-800 hover:bg-gray-700 text-sm px-3 py-1 rounded-lg font-medium">
                                 Track Order
                               </button>
