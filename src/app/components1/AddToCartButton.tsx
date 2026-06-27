@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
-import { addToCart } from "@/actions/cart";
+import { getCartQuantityForProduct, updateProductQuantityInCart } from "@/actions/cart";
 
 type AddToCartButtonProps = {
   productId: string;
@@ -12,15 +12,36 @@ type AddToCartButtonProps = {
 };
 
 function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToCartButtonProps) {
-  const [adding, setAdding] = useState(false);
-  const [added, setAdded] = useState(false);
+  const [quantity, setQuantity] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+  const [updating, setUpdating] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  const handleAdd = async () => {
-    if (disabled || adding) return;
-    
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadQuantity() {
+      try {
+        const result = await getCartQuantityForProduct(productId);
+        if (!ignore) {
+          setQuantity(result.quantity ?? 0);
+        }
+      } finally {
+        if (!ignore) setLoading(false);
+      }
+    }
+
+    loadQuantity();
+    return () => {
+      ignore = true;
+    };
+  }, [productId]);
+
+  const handleQuantityChange = async (delta: number) => {
+    if (disabled || updating) return;
+
     const auth = await getAuthState();
     if (!auth.isAuthenticated) {
       const current = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
@@ -30,20 +51,38 @@ function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToC
       router.replace(url.pathname + "?" + url.searchParams.toString());
       return;
     }
-    setAdding(true);
+
+    setUpdating(true);
     try {
-      await addToCart(productId, 1);
-      setAdded(true);
-      setTimeout(() => setAdded(false), 1500);
+      const result = await updateProductQuantityInCart(productId, delta);
+      setQuantity(result.quantity ?? 0);
     } finally {
-      setAdding(false);
+      setUpdating(false);
     }
   };
 
   return (
     <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-      <button className={className} onClick={handleAdd} disabled={disabled || adding}>
-        {adding ? "ADDING..." : added ? "ADDED" : "ADD TO CART"}
+      <button
+        type="button"
+        onClick={() => handleQuantityChange(-1)}
+        disabled={disabled || updating || quantity <= 0}
+        className={className}
+        style={{ minWidth: 38, padding: "8px 10px" }}
+      >
+        −
+      </button>
+      <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700 }}>
+        {loading ? "…" : updating ? "…" : quantity}
+      </span>
+      <button
+        type="button"
+        onClick={() => handleQuantityChange(1)}
+        disabled={disabled || updating}
+        className={className}
+        style={{ minWidth: 38, padding: "8px 10px" }}
+      >
+        +
       </button>
     </div>
   );

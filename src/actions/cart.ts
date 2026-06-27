@@ -49,6 +49,54 @@ export async function addToCart(productId: string, quantity: number = 1) {
   });
 }
 
+export async function getCartQuantityForProduct(productId: string) {
+  if (!productId) throw new Error("productId is required");
+
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return { quantity: 0 };
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) return { quantity: 0 };
+
+  const existing = await prisma.cart.findFirst({
+    where: { userId: user.id, productId },
+    select: { quantity: true },
+  });
+
+  return { quantity: existing?.quantity ?? 0 };
+}
+
+export async function updateProductQuantityInCart(productId: string, delta: number) {
+  if (!productId) throw new Error("productId is required");
+  if (!delta) return { quantity: 0 };
+
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  const existing = await prisma.cart.findFirst({ where: { userId: user.id, productId } });
+
+  if (!existing) {
+    if (delta <= 0) return { quantity: 0 };
+    await prisma.cart.create({ data: { userId: user.id, productId, quantity: 1 } });
+    return { quantity: 1 };
+  }
+
+  const nextQty = existing.quantity + delta;
+
+  if (nextQty <= 0) {
+    await prisma.cart.delete({ where: { id: existing.id } });
+    return { quantity: 0 };
+  }
+
+  await prisma.cart.update({ where: { id: existing.id }, data: { quantity: nextQty } });
+  return { quantity: nextQty };
+}
+
 export type CartListItem = {
   id: string;
   name: string;

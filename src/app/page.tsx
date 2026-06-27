@@ -5,56 +5,65 @@ import Image from 'next/image';
 import { Target, Crosshair, Package, Eye } from 'lucide-react';
 
 // Server-side check: log in terminal whether the hero images exist (runs only on server)
+async function checkHeroImageImports() {
+  try {
+    await import('fs');
+    await import('path');
+  } catch (err) {
+    console.error('Hero image check failed:', err instanceof Error ? err.message : String(err));
+  }
+}
+
 if (typeof window === 'undefined') {
-  (async () => {
-    try {
-      await import('fs');
-      await import('path');
-    } catch (err) {
-      err instanceof Error ? err.message : String(err);
-    }
-  })();
+  void checkHeroImageImports();
 }
 
 
 import { getProducts } from '@/actions/products';
 import type { PrismaClient } from '@prisma/client';
 
+export const dynamic = 'force-dynamic';
+
 declare global {
   var __PRISMA__: PrismaClient | undefined;
 }
 
 export default async function Home() {
-  // Fetch all categories to find "Air Guns" category ID
-  const { PrismaClient } = await import('@prisma/client');
-  let prisma;
-  if (process.env.NODE_ENV === "production") {
-    prisma = new PrismaClient();
-  } else {
-    if (!global.__PRISMA__) {
-      global.__PRISMA__ = new PrismaClient();
+  let featuredProducts = { items: [] as Array<{ id: string; name: string; price: number; photos: Array<{ isPrimary?: boolean; url: string }> }> };
+
+  try {
+    // Fetch all categories to find "Air Guns" category ID
+    const { PrismaClient } = await import('@prisma/client');
+    let prisma;
+    if (process.env.NODE_ENV === 'production') {
+      prisma = new PrismaClient();
+    } else {
+      if (!global.__PRISMA__) {
+        global.__PRISMA__ = new PrismaClient();
+      }
+      prisma = global.__PRISMA__;
     }
-    prisma = global.__PRISMA__;
-  }
-  
-  const airgunsCategories = await prisma.category.findMany({
-    where: {
-      name: {
-        contains: 'Air',
-        mode: 'insensitive',
+
+    const airgunsCategories = await prisma.category.findMany({
+      where: {
+        name: {
+          contains: 'Air',
+          mode: 'insensitive',
+        },
       },
-    },
-  });
-  
-  // Fetch products with the airgun category (limit to 4)
-  const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
-  const featuredProducts = await getProducts({
-    filters: {
-      categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
-    },
-    page: 1,
-    pageSize: 4,
-  });
+    });
+
+    const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
+    featuredProducts = await getProducts({
+      filters: {
+        categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+      },
+      page: 1,
+      pageSize: 4,
+    });
+  } catch (error) {
+    console.error('Failed to load homepage featured products:', error instanceof Error ? error.message : String(error));
+  }
   const categories = [
     { name: 'Air Guns', sub: 'Precision & Power', icon: Target },
     { name: 'Ammunition', sub: '500+ Types', icon: Package },

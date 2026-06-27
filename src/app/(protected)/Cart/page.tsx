@@ -82,7 +82,7 @@ export default function Cart() {
   }, []);
 
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
-  const shipping = 1;
+  const shipping = subtotal * 0.05;
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
 
@@ -132,7 +132,7 @@ export default function Cart() {
         name: 'KGH Store',
         description: 'Purchase from KGH',
         image: '/logo.png', // Your logo
-        handler: function (response: unknown) {
+        handler: function () {
           // Frontend handler - DO NOT mark payment as successful here
           // Only show UI feedback while webhook processes the payment
           handlePaymentResponse();
