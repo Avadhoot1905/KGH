@@ -7,6 +7,8 @@ import { getMyWishlistItems, moveWishlistItemToCart, removeFromMyWishlist, moveA
 import Link from "next/link";
 import Image from "next/image";
 
+import { FaShoppingCart, FaTrash } from "react-icons/fa";
+
 interface WishlistItem {
   id: string;
   name: string;
@@ -87,7 +89,14 @@ export default function WishlistPage() {
 
         <div className="wishlist-grid">
           {loading ? (
-            <></>
+            <div className="flex flex-col items-center justify-center p-12 text-gray-400 col-span-full gap-4 w-full">
+              <svg className="animate-spin w-10 h-10 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <circle cx="12" cy="12" r="9" className="opacity-20" />
+                <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+                <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+              </svg>
+              <p className="text-sm font-medium tracking-wide">Loading your wishlist...</p>
+            </div>
           ) : wishlist.length === 0 ? (
             <div className="empty-state p-8 text-center text-gray-400 col-span-full">
               <p className="text-lg font-medium">No products added yet.</p>
@@ -108,7 +117,7 @@ export default function WishlistPage() {
               )}
               <div className="wishlist-actions">
                 <button
-                  className="btn-red"
+                  className="btn-wishlist-cart"
                   onClick={async () => {
                     await moveWishlistItemToCart(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
@@ -117,10 +126,11 @@ export default function WishlistPage() {
                     setRecommendations(recs as unknown as Recommendation[]);
                   }}
                 >
-                  Move to Cart
+                  <FaShoppingCart size={14} />
+                  <span>Move to Cart</span>
                 </button>
                 <button
-                  className="btn-grey"
+                  className="btn-wishlist-remove"
                   onClick={async () => {
                     await removeFromMyWishlist(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
@@ -128,8 +138,9 @@ export default function WishlistPage() {
                     const recs = await getWishlistRecommendations();
                     setRecommendations(recs as unknown as Recommendation[]);
                   }}
+                  title="Remove Item"
                 >
-                  Remove
+                  <FaTrash size={14} />
                 </button>
               </div>
             </div>

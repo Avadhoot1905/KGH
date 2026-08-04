@@ -1,0 +1,37 @@
+
+> kgh@0.1.0 build
+> npx prisma generate && next build
+
+Environment variables loaded from .env
+Prisma schema loaded from prisma\schema.prisma
+
+✔ Generated Prisma Client (v6.19.0) to .\node_modules\@prisma\client in 600ms
+
+Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
+
+Tip: Interested in query caching in just a few lines of code? Try Accelerate today! https://pris.ly/tip-3-accelerate
+
+   ▲ Next.js 15.5.12
+   - Environments: .env
+
+   Creating an optimized production build ...
+ ✓ Compiled successfully in 53s
+   Linting and checking validity of types ...
+
+./src/app/(protected)/Cart/page.tsx
+104:6  Warning: React Hook useEffect has missing dependencies: 'handleCheckout' and 'session?.user'. Either include them or remove the dependency array.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+Failed to compile.
+
+./src/auth.ts:33:22
+Type error: Property 'id' does not exist on type '{ name?: string | null | undefined; email?: string | null | undefined; image?: string | null | undefined; }'.
+
+[0m [90m 31 |[39m     [36masync[39m session({ session[33m,[39m user }) {
+ [90m 32 |[39m       [36mif[39m (session[33m.[39muser) {
+[31m[1m>[22m[39m[90m 33 |[39m         session[33m.[39muser[33m.[39mid [33m=[39m user[33m.[39mid[33m;[39m
+ [90m    |[39m                      [31m[1m^[22m[39m
+ [90m 34 |[39m         session[33m.[39muser[33m.[39mname [33m=[39m user[33m.[39mname[33m;[39m
+ [90m 35 |[39m         session[33m.[39muser[33m.[39memail [33m=[39m user[33m.[39memail[33m;[39m
+ [90m 36 |[39m         session[33m.[39muser[33m.[39mimage [33m=[39m user[33m.[39mimage[33m;[39m[0m
+Next.js build worker exited with code: 1 and signal: null

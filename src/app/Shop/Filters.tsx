@@ -78,12 +78,19 @@ function FiltersInner({ brands, types, onClose, categories }: Props) {
           <strong>Category</strong>
           <div>
             {categories.map((c) => {
-              const isActive = selectedCategory === c.id || selectedCategory === c.name;
+const isActive =
+  selectedCategory.toLowerCase() === c.name.toLowerCase() ||
+  selectedCategory === c.id ||
+  (selectedCategory && (
+    c.name.toLowerCase().includes(selectedCategory.toLowerCase()) ||
+    selectedCategory.toLowerCase().includes(c.name.toLowerCase()) ||
+    (selectedCategory.toLowerCase().includes("air") && c.name.toLowerCase().includes("air"))
+  ));
               return (
                 <button
                   key={c.id}
                   className={`pill ${isActive ? "active" : ""}`}
-                  onClick={() => setParam("category", isActive ? null : c.name)}
+onClick={() => setParam("category", isActive ? null : c.id)}
                 >
                   {c.name}
                 </button>

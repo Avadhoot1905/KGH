@@ -168,37 +168,189 @@ export async function createOrderFromCart() {
       include: { product: true },
     });
 
-    if (cartItems.length === 0) {
-      return { success: false, error: "Cart is empty" };
+    for (const item of cartItems) {
+      if (item.product.quantity < item.quantity) {
+        return { success: false, error: `Insufficient stock for "${item.product.name}". Only ${item.product.quantity} items left.` };
+      }
+      if (item.product.licenseRequired) {
+        return { success: false, error: `"${item.product.name}" requires a valid arms license. Please contact the store directly.` };
+      }
     }
 
-    const total = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const subtotal = cartItems.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+    const shippingCost = subtotal * 0.05; // 5% shipping cost
+    const total = subtotal + shippingCost;
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const order = await (prisma as any).order.create({
-      data: {
-        userId: user.id,
-        total,
-        status: "PENDING",
-        items: {
-          create: cartItems.map((item) => ({
-            productId: item.productId,
-            quantity: item.quantity,
-            price: item.product.price,
-          })),
+    // Use transaction to atomically create order, decrement product quantities, and clear cart
+    const order = await prisma.$transaction(async (tx) => {
+      // 1. Create order
+      const newOrder = await tx.order.create({
+        data: {
+          userId: user.id,
+          fullName: user.name ?? "",
+          email: user.email ?? "",
+          phoneNumber: user.phoneNumber ?? "",
+          addressLine1: user.addressLine1 ?? "",
+          addressLine2: user.addressLine2 ?? null,
+          landmark: user.landmark ?? null,
+          city: user.city ?? "",
+          state: user.state ?? "",
+          country: user.country ?? "",
+          pincode: user.pincode ?? "",
+          subtotal,
+          shippingCost,
+          discount: 0,
+          tax: 0,
+          total,
+          status: "PENDING",
+          items: {
+            create: cartItems.map((item) => ({
+              productId: item.productId,
+              quantity: item.quantity,
+              price: item.product.price,
+            })),
+          },
         },
-      },
-    });
+      });
 
-    // Clear the cart after creating order
-    await prisma.cart.deleteMany({
-      where: { userId: user.id },
+      // 2. Decrement stock
+      for (const item of cartItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        });
+      }
+
+      // 3. Clear cart
+      await tx.cart.deleteMany({
+        where: { userId: user.id },
+      });
+
+      return newOrder;
     });
 
     return { success: true, orderId: order.id };
   } catch (error) {
     console.error("Failed to create order:", error);
     return { success: false, error: "Failed to create order" };
+  }
+}
+
+export type CheckoutProfileInput = {
+  fullName?: string;
+  email?: string;
+  phoneNumber?: string;
+  addressLine1?: string;
+  addressLine2?: string;
+  landmark?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  pincode?: string;
+  alternatePhone?: string;
+};
+
+export async function getCurrentUserCheckoutDetails() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return {
+      success: false as const,
+      error: "Not authenticated",
+    };
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    select: {
+      name: true,
+      email: true,
+      phoneNumber: true,
+      addressLine1: true,
+      addressLine2: true,
+      landmark: true,
+      city: true,
+      state: true,
+      country: true,
+      pincode: true,
+      alternatePhone: true,
+      profileCompleted: true,
+    },
+  });
+
+  if (!user) {
+    return {
+      success: false as const,
+      error: "User not found",
+    };
+  }
+
+  const profileCompleted = Boolean(user.profileCompleted || (user.name && user.phoneNumber && user.addressLine1 && user.city && user.state && user.country && user.pincode));
+
+  return {
+    success: true as const,
+    data: {
+      fullName: user.name ?? "",
+      email: user.email ?? "",
+      phoneNumber: user.phoneNumber ?? "",
+      addressLine1: user.addressLine1 ?? "",
+      addressLine2: user.addressLine2 ?? "",
+      landmark: user.landmark ?? "",
+      city: user.city ?? "",
+      state: user.state ?? "",
+      country: user.country ?? "",
+      pincode: user.pincode ?? "",
+      alternatePhone: user.alternatePhone ?? "",
+      profileCompleted,
+    },
+  };
+}
+
+export async function saveCheckoutProfile(data: CheckoutProfileInput) {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  try {
+    const sanitized = {
+      name: data.fullName?.trim() || undefined,
+      phoneNumber: data.phoneNumber?.trim() || undefined,
+      addressLine1: data.addressLine1?.trim() || undefined,
+      addressLine2: data.addressLine2?.trim() || undefined,
+      landmark: data.landmark?.trim() || undefined,
+      city: data.city?.trim() || undefined,
+      state: data.state?.trim() || undefined,
+      country: data.country?.trim() || undefined,
+      pincode: data.pincode?.trim() || undefined,
+      alternatePhone: data.alternatePhone?.trim() || undefined,
+      profileCompleted: Boolean(
+        data.fullName?.trim() &&
+        data.phoneNumber?.trim() &&
+        data.addressLine1?.trim() &&
+        data.city?.trim() &&
+        data.state?.trim() &&
+        data.country?.trim() &&
+        data.pincode?.trim()
+      ),
+    };
+
+    const updatedUser = await prisma.user.update({
+      where: { email },
+      data: sanitized,
+    });
+
+    return { success: true, user: updatedUser };
+  } catch (error) {
+    console.error("Failed to update checkout profile:", error);
+    return { success: false, error: "Failed to update profile" };
   }
 }
 
@@ -231,10 +383,126 @@ export async function updateUserProfile(data: {
   }
 }
 
+export async function getAdminOrders() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return [];
+  }
+
+  const isAdminUser = await (await import("@/lib/adminAuth")).isAdmin(email);
+  if (!isAdminUser) {
+    return [];
+  }
+
+  const orders = await prisma.order.findMany({
+    orderBy: { createdAt: "desc" },
+    include: {
+      user: { select: { id: true, name: true, email: true, phoneNumber: true } },
+      items: {
+        include: {
+          product: { select: { id: true, name: true } },
+        },
+      },
+      payment: true,
+    },
+  });
+
+  return orders.map((order) => ({
+    id: order.id,
+    fullName: order.fullName ?? order.user?.name ?? "",
+    email: order.email ?? order.user?.email ?? "",
+    phoneNumber: order.phoneNumber ?? order.user?.phoneNumber ?? "",
+    fullAddress: [order.addressLine1, order.addressLine2, order.landmark]
+      .filter(Boolean)
+      .join(", "),
+    city: order.city ?? "",
+    state: order.state ?? "",
+    country: order.country ?? "",
+    pincode: order.pincode ?? "",
+    products: order.items.map((item) => ({
+      name: item.product?.name ?? "",
+      quantity: item.quantity,
+      price: item.price,
+    })),
+    total: order.total,
+    razorpayPaymentId: order.payment?.razorpayPaymentId ?? "",
+    paymentStatus: order.payment?.status ?? "PENDING",
+    orderStatus: order.status,
+    createdAt: order.createdAt,
+  }));
+}
+
+export async function updateOrderStatus(orderId: string, status: "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED") {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const isAdminUser = await (await import("@/lib/adminAuth")).isAdmin(email);
+  if (!isAdminUser) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  try {
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { status },
+    });
+
+    return { success: true, order: updatedOrder };
+  } catch (error) {
+    console.error("Failed to update order status:", error);
+    return { success: false, error: "Failed to update order" };
+  }
+}
+
 export async function changePassword() {
   // Password change is not available for OAuth accounts
   return { success: false, error: "Password change is not available for OAuth accounts" };
 }
+
+export async function getAdminUsers() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return [];
+  }
+
+  const isAdminUser = await (await import("@/lib/adminAuth")).isAdmin(email);
+  if (!isAdminUser) {
+    return [];
+  }
+
+  const users = await prisma.user.findMany({
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      contact: true,
+      role: true,
+      phoneNumber: true,
+      addressLine1: true,
+      addressLine2: true,
+      landmark: true,
+      city: true,
+      state: true,
+      country: true,
+      pincode: true,
+      alternatePhone: true,
+      profileCompleted: true,
+      createdAt: true,
+    },
+  });
+
+  return users;
+}
+
 
 
 

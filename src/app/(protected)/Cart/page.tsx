@@ -5,14 +5,18 @@ import Navbar from '@/app/components1/Navbar';
 import Footer from '@/app/components1/Footer';
 import { FaTrash } from 'react-icons/fa';
 import Link from 'next/link';
-import { useEffect, useMemo, useState } from 'react';
-import { getMyCartItems, removeCartItem, updateCartItemQuantity } from '@/actions/cart';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { getMyCartItems, removeCartItem, updateCartItemQuantity, moveCartItemToWishlist } from '@/actions/cart';
+import { getCurrentUserCheckoutDetails } from '@/actions/profile';
 import Image from 'next/image';
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
+import ProfileCompletionModal from '@/components/ProfileCompletionModal';
 
 interface CartItem {
   id: string | number;
+  productId: string;
   name: string;
   category: string;
   brand: string;
@@ -60,11 +64,18 @@ declare global {
 }
 
 export default function Cart() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
+  const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  const [pendingRemoveItem, setPendingRemoveItem] = useState<{ id: string; productId: string; name: string } | null>(null);
   const { data: session, status } = useSession();
+  const paymentAttemptedRef = useRef(false);
+  const paymentStep = searchParams.get('step') === 'payment';
 
   useEffect(() => {
     let mounted = true;
@@ -86,6 +97,16 @@ export default function Cart() {
   const tax = subtotal * 0.0875;
   const total = subtotal + shipping + tax;
 
+  useEffect(() => {
+    if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || cartItems.length === 0 || !razorpayLoaded) {
+      return;
+    }
+
+    paymentAttemptedRef.current = true;
+    void handleCheckout();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paymentStep, isProcessing, razorpayLoaded, status, session?.user?.email, cartItems.length]);
+
   /**
    * Handle checkout button click
    * Creates a Razorpay order on the backend and opens checkout
@@ -93,16 +114,27 @@ export default function Cart() {
   const handleCheckout = async () => {
     if (isProcessing) return;
 
-    // Check if user is authenticated
     if (status !== 'authenticated' || !session?.user) {
       alert('Please sign in to proceed with checkout');
       return;
     }
 
+    if (cartItems.length === 0) {
+      alert('Your cart is empty.');
+      return;
+    }
+
     try {
       setIsProcessing(true);
+      const profileResult = await getCurrentUserCheckoutDetails();
+      const addressData = profileResult.success && profileResult.data ? profileResult.data : null;
 
-      // Step 1: Create order on backend
+      if (!profileResult.success || !profileResult.data?.profileCompleted) {
+        setIsProcessing(false);
+        setProfileModalOpen(true);
+        return;
+      }
+
       const response = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: {
@@ -132,10 +164,8 @@ export default function Cart() {
         name: 'KGH Store',
         description: 'Purchase from KGH',
         image: '/logo.png', // Your logo
-        handler: function () {
-          // Frontend handler - DO NOT mark payment as successful here
-          // Only show UI feedback while webhook processes the payment
-          handlePaymentResponse();
+        handler: function (response: unknown) {
+          void handlePaymentResponse(response, addressData);
         },
         prefill: {
           name: session.user.name || '',
@@ -156,6 +186,7 @@ export default function Cart() {
       razorpay.open();
     } catch (error) {
       console.error('Checkout error:', error);
+      paymentAttemptedRef.current = false;
       alert(error instanceof Error ? error.message : 'Failed to initiate checkout. Please try again.');
       setIsProcessing(false);
     }
@@ -166,18 +197,36 @@ export default function Cart() {
    * NOTE: This is NOT the source of truth!
    * The webhook will actually verify and process the payment.
    */
-  const handlePaymentResponse = async () => {
+  const handlePaymentResponse = async (response: unknown, profile: { fullName?: string; email?: string; phoneNumber?: string; addressLine1?: string; addressLine2?: string; city?: string; state?: string; country?: string; pincode?: string } | null) => {
     try {
-      // Show success message to user
-      alert('Payment initiated! Processing your order...');
-      
-      // Clear cart items from UI
+      const paymentResponse = response as { razorpay_payment_id?: string; razorpay_order_id?: string; razorpay_signature?: string };
+      if (!paymentResponse.razorpay_order_id || !paymentResponse.razorpay_payment_id) {
+        throw new Error('Invalid payment response');
+      }
+
+      await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          razorpayOrderId: paymentResponse.razorpay_order_id,
+          razorpayPaymentId: paymentResponse.razorpay_payment_id,
+          total,
+          fullName: profile?.fullName || session?.user?.name || '',
+          email: profile?.email || session?.user?.email || '',
+          phoneNumber: profile?.phoneNumber || '',
+          addressLine1: profile?.addressLine1 || '',
+          addressLine2: profile?.addressLine2 || '',
+          landmark: '',
+          city: profile?.city || '',
+          state: profile?.state || '',
+          country: profile?.country || '',
+          pincode: profile?.pincode || '',
+        }),
+      });
+
       setCartItems([]);
       setIsProcessing(false);
-
-      // Redirect to orders page or success page
-      // The webhook will process the actual payment verification
-      window.location.href = '/profile'; // Redirect to profile/orders
+      router.push('/Cart/success');
     } catch (error) {
       console.error('Error handling payment response:', error);
       setIsProcessing(false);
@@ -202,7 +251,14 @@ export default function Cart() {
           {/* Left side - Cart Items */}
           <div className="cart-items">
             {loading ? (
-              <></>
+              <div className="flex flex-col items-center justify-center p-12 text-gray-400 w-full gap-4 col-span-full">
+                <svg className="animate-spin w-10 h-10 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <circle cx="12" cy="12" r="9" className="opacity-20" />
+                  <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+                  <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+                </svg>
+                <p className="text-sm font-medium tracking-wide">Loading cart items...</p>
+              </div>
             ) : cartItems.length === 0 ? (
               <div className="empty-state p-8 text-center text-gray-400 w-full">
                 <p className="text-lg font-medium">No products added yet.</p>
@@ -224,6 +280,11 @@ export default function Cart() {
                     <div className="quantity-controls">
                       <button
                         onClick={async () => {
+                          if (item.quantity === 1) {
+                            setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
+                            setShowRemoveConfirm(true);
+                            return;
+                          }
                           await updateCartItemQuantity(String(item.id), -1);
                           setCartItems((prev) => {
                             const next = prev.map((p) =>
@@ -252,9 +313,9 @@ export default function Cart() {
 
                 <FaTrash
                   className="delete-icon"
-                  onClick={async () => {
-                    await removeCartItem(String(item.id));
-                    setCartItems((prev) => prev.filter((p) => p.id !== item.id));
+                  onClick={() => {
+                    setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
+                    setShowRemoveConfirm(true);
                   }}
                 />
               </div>
@@ -284,8 +345,21 @@ export default function Cart() {
               </div>
               <button 
                 className="checkout-btn" 
-                onClick={handleCheckout}
-                disabled={isProcessing || !razorpayLoaded || status !== 'authenticated'}
+                onClick={async () => {
+                  if (status !== 'authenticated' || !session?.user) {
+                    alert('Please sign in to proceed with checkout');
+                    return;
+                  }
+
+                  const profileResult = await getCurrentUserCheckoutDetails();
+                  if (!profileResult.success || !profileResult.data?.profileCompleted) {
+                    setProfileModalOpen(true);
+                    return;
+                  }
+
+                  router.push('/Cart/checkout-details');
+                }}
+                disabled={isProcessing || status !== 'authenticated'}
               >
                 {isProcessing 
                   ? 'Processing...' 
@@ -301,6 +375,79 @@ export default function Cart() {
           )}
         </div>
       </div>
+
+      <ProfileCompletionModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} onSaved={() => { setProfileModalOpen(false); router.push('/Cart?step=payment'); }} />
+      
+      {showRemoveConfirm && pendingRemoveItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-[4px] animate-fade-in" onClick={() => { setShowRemoveConfirm(false); setPendingRemoveItem(null); }}>
+          <div className="bg-[#1a1a1a] border border-[#333] rounded-xl p-8 max-w-[450px] w-[90%] mx-4 shadow-2xl text-center relative animate-slide-up" onClick={(e) => e.stopPropagation()}>
+            <button 
+              className="absolute top-4 right-4 bg-none border-none text-[#aaa] hover:text-white hover:bg-[#333] transition-all text-2xl w-10 h-10 rounded-full flex items-center justify-center cursor-pointer"
+              onClick={() => {
+                setShowRemoveConfirm(false);
+                setPendingRemoveItem(null);
+              }}
+              title="Close"
+            >
+              ×
+            </button>
+
+            <h3 className="text-xl font-semibold text-white mb-4 tracking-wide">Remove Item</h3>
+            <p className="text-sm text-gray-400 mb-6 leading-relaxed">
+              Would you like to move <strong>{pendingRemoveItem.name}</strong> to your Wishlist or remove it completely from your cart?
+            </p>
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={async () => {
+                  try {
+                    await moveCartItemToWishlist(pendingRemoveItem.id, pendingRemoveItem.productId);
+                    setCartItems((prev) => prev.filter((p) => p.id !== pendingRemoveItem.id));
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setShowRemoveConfirm(false);
+                    setPendingRemoveItem(null);
+                  }
+                }}
+                className="w-full py-3 rounded-lg text-white font-semibold transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                style={{
+                  background: "linear-gradient(135deg, #d32f2f 0%, #b71c1c 100%)",
+                  border: "none",
+                  boxShadow: "0 4px 15px rgba(211, 47, 47, 0.3)",
+                }}
+              >
+                Move to Wishlist
+              </button>
+              <button
+                onClick={async () => {
+                  try {
+                    await removeCartItem(pendingRemoveItem.id);
+                    setCartItems((prev) => prev.filter((p) => p.id !== pendingRemoveItem.id));
+                  } catch (err) {
+                    console.error(err);
+                  } finally {
+                    setShowRemoveConfirm(false);
+                    setPendingRemoveItem(null);
+                  }
+                }}
+                className="w-full py-3 rounded-lg text-[#d32f2f] font-semibold transition-all transform hover:-translate-y-0.5 active:translate-y-0 cursor-pointer"
+                style={{
+                  background: "transparent",
+                  border: "2px solid #d32f2f",
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = "rgba(211, 47, 47, 0.1)";
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = "transparent";
+                }}
+              >
+               Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </>

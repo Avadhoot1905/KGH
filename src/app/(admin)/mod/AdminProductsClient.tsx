@@ -1,8 +1,16 @@
 "use client";
 
 import { ProductListItem } from "@/actions/products";
+import { getAdminOrders, updateOrderStatus, getAdminUsers } from "@/actions/profile";
+import { 
+  getAllFeedbacks, 
+  updateFeedbackShowOnHome, 
+  getAllReturnRequests, 
+  updateReturnRequestStatus
+} from "@/actions/feedbackAndReturns";
+import { ReturnStatus } from "@prisma/client";
 import dynamic from "next/dynamic";
-import { useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const AdminSearchBar = dynamic(() => import("@/app/components1/AdminSearchBar"), {
   ssr: false,
@@ -28,31 +36,455 @@ type AdminProductsClientProps = {
   products: ProductListItem[];
 };
 
+type AdminOrderSummary = {
+  id: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string;
+  fullAddress: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+  products: Array<{ name: string; quantity: number; price: number }>;
+  total: number;
+  razorpayPaymentId: string;
+  paymentStatus: string;
+  orderStatus: string;
+  createdAt: Date;
+};
+
 export default function AdminProductsClient({ products }: AdminProductsClientProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [stockFilter, setStockFilter] = useState<
+    "ALL" | "LOW" | "OUT" | "ABOUT_OUT"
+  >("ALL");
+  const [missingFieldFilter, setMissingFieldFilter] = useState<
+    "ALL" | "ANY" | "TAG" | "CATEGORY" | "BRAND" | "TYPE" | "CALIBER" | "PHOTOS" | "DESCRIPTION"
+  >("ALL");
+  const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
+  const [ordersLoading, setOrdersLoading] = useState(true);
 
-  // Filter products based on search query
+  // Feedback & Returns states
+  const [feedbacks, setFeedbacks] = useState<Array<{
+    id: string;
+    type: string;
+    content: string;
+    showOnHome: boolean;
+    createdAt: Date;
+    userName: string;
+    userEmail: string;
+  }>>([]);
+  const [returns, setReturns] = useState<Array<{
+    id: string;
+    orderId: string;
+    reason: string;
+    photoUrl: string;
+    status: ReturnStatus;
+    createdAt: Date;
+    customerName: string;
+    customerEmail: string;
+    totalAmount: number;
+  }>>([]);
+  const [feedbacksLoading, setFeedbacksLoading] = useState(true);
+  const [returnsLoading, setReturnsLoading] = useState(true);
+
   const filteredProducts = useMemo(() => {
-    if (!searchQuery.trim()) {
-      return products;
+    let result = products;
+
+    // Search
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+
+      result = result.filter(
+        (product) =>
+          product.name.toLowerCase().includes(query) ||
+          product.description.toLowerCase().includes(query) ||
+          product.brand?.name.toLowerCase().includes(query) ||
+          product.type?.name.toLowerCase().includes(query) ||
+          product.category?.name.toLowerCase().includes(query) ||
+          product.caliber?.name.toLowerCase().includes(query)
+      );
     }
 
-    const query = searchQuery.toLowerCase();
-    return products.filter((product) => {
-      return (
-        product.name.toLowerCase().includes(query) ||
-        product.description.toLowerCase().includes(query) ||
-        product.brand?.name.toLowerCase().includes(query) ||
-        product.type?.name.toLowerCase().includes(query) ||
-        product.category?.name.toLowerCase().includes(query) ||
-        product.caliber?.name.toLowerCase().includes(query)
-      );
+    // Stock Filter
+    switch (stockFilter) {
+      case "LOW":
+        result = result.filter(
+          (product) => product.quantity > 0 && product.quantity <= 5
+        );
+        break;
+
+      case "ABOUT_OUT":
+        result = result.filter(
+          (product) => product.quantity > 0 && product.quantity < 10
+        );
+        break;
+
+      case "OUT":
+        result = result.filter(
+          (product) => product.quantity === 0
+        );
+        break;
+    }
+
+    // Missing Fields / Audit Filter
+    switch (missingFieldFilter) {
+      case "TAG":
+        result = result.filter((product) => !product.tag || product.tag.trim() === "");
+        break;
+      case "CATEGORY":
+        result = result.filter((product) => !product.category || !product.category.name || product.category.name.trim() === "");
+        break;
+      case "BRAND":
+        result = result.filter((product) => !product.brand || !product.brand.name || product.brand.name.trim() === "");
+        break;
+      case "TYPE":
+        result = result.filter((product) => !product.type || !product.type.name || product.type.name.trim() === "");
+        break;
+      case "CALIBER":
+        result = result.filter((product) => !product.caliber || !product.caliber.name || product.caliber.name.trim() === "");
+        break;
+      case "PHOTOS":
+        result = result.filter((product) => !product.photos || product.photos.length === 0);
+        break;
+      case "DESCRIPTION":
+        result = result.filter((product) => !product.description || product.description.trim() === "");
+        break;
+      case "ANY":
+        result = result.filter((product) => 
+          (!product.tag || product.tag.trim() === "") ||
+          (!product.category || !product.category.name || product.category.name.trim() === "") ||
+          (!product.brand || !product.brand.name || product.brand.name.trim() === "") ||
+          (!product.type || !product.type.name || product.type.name.trim() === "") ||
+          (!product.caliber || !product.caliber.name || product.caliber.name.trim() === "") ||
+          (!product.photos || product.photos.length === 0) ||
+          (!product.description || product.description.trim() === "")
+        );
+        break;
+    }
+
+    return result;
+  }, [products, searchQuery, stockFilter, missingFieldFilter]);
+
+  const lowStockCount = products.filter(
+    (p) => p.quantity > 0 && p.quantity <= 5
+  ).length;
+
+  const outOfStockCount = products.filter(
+    (p) => p.quantity === 0
+  ).length;
+
+  const aboutToOutCount = products.filter(
+    (p) => p.quantity > 0 && p.quantity < 10
+  ).length;
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const result = await getAdminOrders();
+        if (mounted) setOrders(result as AdminOrderSummary[]);
+      } catch (err) {
+        console.error("Failed to load orders:", err);
+      } finally {
+        if (mounted) setOrdersLoading(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        const result = await getAllFeedbacks();
+        if (mounted) setFeedbacks(result);
+      } catch (err) {
+        console.error("Failed to load feedbacks:", err);
+      } finally {
+        if (mounted) setFeedbacksLoading(false);
+      }
+    })();
+
+    (async () => {
+      try {
+        const result = await getAllReturnRequests();
+        if (mounted) setReturns(result);
+      } catch (err) {
+        console.error("Failed to load returns:", err);
+      } finally {
+        if (mounted) setReturnsLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const handleShowOnHomeChange = async (feedbackId: string, nextShow: boolean) => {
+    try {
+      await updateFeedbackShowOnHome(feedbackId, nextShow);
+      setFeedbacks((current) => current.map((f) => f.id === feedbackId ? { ...f, showOnHome: nextShow } : f));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update feedback status");
+    }
+  };
+
+  const handleReturnStatusUpdate = async (requestId: string, nextStatus: string) => {
+    try {
+      await updateReturnStatus(requestId, nextStatus as ReturnStatus);
+      setReturns((current) => current.map((r) => r.id === requestId ? { ...r, status: nextStatus as ReturnStatus } : r));
+    } catch (err) {
+      console.error(err);
+      alert("Failed to update return request status");
+    }
+  };
+
+  // Mock function to avoid TS error if updateReturnStatus is called differently
+  const updateReturnStatus = async (id: string, status: ReturnStatus) => {
+    return await updateReturnRequestStatus(id, status);
+  };
+
+  const handleExportFeedbacksCSV = () => {
+    if (feedbacks.length === 0) {
+      alert("No feedback to export.");
+      return;
+    }
+
+    const headers = ["Feedback ID", "Type", "Content", "Show On Home Page", "User Name", "User Email", "Created At"];
+    const rows = feedbacks.map(f => [
+      f.id,
+      f.type,
+      f.content,
+      f.showOnHome ? "Yes" : "No",
+      f.userName,
+      f.userEmail,
+      new Date(f.createdAt).toLocaleString("en-IN")
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => 
+        row.map(val => {
+          const stringVal = String(val ?? "");
+          if (stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')) {
+            return `"${stringVal.replace(/"/g, '""')}"`;
+          }
+          return stringVal;
+        }).join(",")
+      )
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `KGH_Feedbacks_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportReturnsCSV = () => {
+    if (returns.length === 0) {
+      alert("No returns to export.");
+      return;
+    }
+
+    const headers = ["Return ID", "Order ID", "Reason", "Status", "Customer Name", "Customer Email", "Total Amount (INR)", "Created At"];
+    const rows = returns.map(r => [
+      r.id,
+      r.orderId,
+      r.reason,
+      r.status,
+      r.customerName,
+      r.customerEmail,
+      r.totalAmount,
+      new Date(r.createdAt).toLocaleString("en-IN")
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => 
+        row.map(val => {
+          const stringVal = String(val ?? "");
+          if (stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')) {
+            return `"${stringVal.replace(/"/g, '""')}"`;
+          }
+          return stringVal;
+        }).join(",")
+      )
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `KGH_Returns_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleStatusChange = async (orderId: string, nextStatus: string) => {
+    const result = await updateOrderStatus(orderId, nextStatus as "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED");
+    if (result.success) {
+      setOrders((current) => current.map((order) => order.id === orderId ? { ...order, orderStatus: nextStatus } : order));
+    }
+  };
+
+  const handleExportCSV = () => {
+    if (orders.length === 0) {
+      alert("No orders to export.");
+      return;
+    }
+
+    // Define CSV headers
+    const headers = [
+      "Order ID",
+      "Customer Name",
+      "Email",
+      "Phone Number",
+      "Address",
+      "City",
+      "State",
+      "Country",
+      "Pincode",
+      "Products Ordered",
+      "Total Amount (INR)",
+      "Razorpay Payment ID",
+      "Payment Status",
+      "Order Status",
+      "Created At"
+    ];
+
+    // Build CSV rows
+    const rows = orders.map(order => {
+      const productSummary = order.products.map(p => `${p.name} (Qty: ${p.quantity}, Price: ₹${p.price})`).join("; ");
+      return [
+        order.id,
+        order.fullName,
+        order.email,
+        order.phoneNumber,
+        order.fullAddress || "",
+        order.city,
+        order.state,
+        order.country,
+        order.pincode,
+        productSummary,
+        order.total,
+        order.razorpayPaymentId || "",
+        order.paymentStatus,
+        order.orderStatus,
+        new Date(order.createdAt).toLocaleString("en-IN")
+      ];
     });
-  }, [products, searchQuery]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => 
+        row.map(val => {
+          const stringVal = String(val ?? "");
+          if (stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')) {
+            return `"${stringVal.replace(/"/g, '""')}"`;
+          }
+          return stringVal;
+        }).join(",")
+      )
+    ].join("\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.setAttribute("href", url);
+    link.setAttribute("download", `KGH_Orders_${new Date().toISOString().split('T')[0]}.csv`);
+    link.style.visibility = "hidden";
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handleExportUsersCSV = async () => {
+    try {
+      const usersList = await getAdminUsers();
+      if (usersList.length === 0) {
+        alert("No users to export.");
+        return;
+      }
+
+      // Define CSV headers
+      const headers = [
+        "User ID",
+        "Name",
+        "Email",
+        "Contact",
+        "Phone Number",
+        "Alternate Phone",
+        "Role",
+        "Profile Completed",
+        "Address Line 1",
+        "Address Line 2",
+        "Landmark",
+        "City",
+        "State",
+        "Country",
+        "Pincode",
+        "Registered At"
+      ];
+
+      // Build CSV rows
+      const rows = usersList.map(u => [
+        u.id,
+        u.name || "",
+        u.email || "",
+        u.contact || "",
+        u.phoneNumber || "",
+        u.alternatePhone || "",
+        u.role,
+        u.profileCompleted ? "Yes" : "No",
+        u.addressLine1 || "",
+        u.addressLine2 || "",
+        u.landmark || "",
+        u.city || "",
+        u.state || "",
+        u.country || "",
+        u.pincode || "",
+        new Date(u.createdAt).toLocaleString("en-IN")
+      ]);
+
+      const csvContent = [
+        headers.join(","),
+        ...rows.map(row => 
+          row.map(val => {
+            const stringVal = String(val ?? "");
+            if (stringVal.includes(",") || stringVal.includes("\n") || stringVal.includes('"')) {
+              return `"${stringVal.replace(/"/g, '""')}"`;
+            }
+            return stringVal;
+          }).join(",")
+        )
+      ].join("\n");
+
+      const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.setAttribute("href", url);
+      link.setAttribute("download", `KGH_Users_${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = "hidden";
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error("Failed to export users:", err);
+      alert("Failed to export users.");
+    }
+  };
+
   return (
     <main className="min-h-screen bg-[#0f0f0f] text-white font-sans px-4 py-8 dark:bg-[#0f0f0f] dark:text-white">
       {/* Header Section */}
-      <div className="flex items-center justify-between mb-8 border-b border-[#333] pb-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-8 border-b border-[#333] pb-4 gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-white">All Products</h1>
           {searchQuery && (
@@ -61,9 +493,55 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
             </p>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            onClick={() => {
+              const element = document.getElementById("admin-orders-section");
+              if (element) {
+                element.scrollIntoView({ behavior: "smooth" });
+              }
+            }}
+            className="px-3 py-1.5 rounded bg-red-600 hover:bg-red-700 text-white text-sm font-semibold transition-colors border border-red-600"
+          >
+            Go to Orders
+          </button>
           <AdminAppointmentsButton />
-          <AdminSearchBar onSearch={setSearchQuery} />
+<AdminSearchBar onSearch={setSearchQuery} />
+
+<select
+  value={stockFilter}
+  onChange={(e) =>
+    setStockFilter(
+      e.target.value as "ALL" | "LOW" | "OUT" | "ABOUT_OUT"
+    )
+  }
+  className="rounded border border-[#333] bg-[#1a1a1a] px-3 py-2 text-sm text-white max-w-full"
+>
+  <option value="ALL">All Stock</option>
+  <option value="LOW">Low Stock (5 or less) ({lowStockCount})</option>
+  <option value="ABOUT_OUT">About to be Sold Out (&lt; 10) ({aboutToOutCount})</option>
+  <option value="OUT">Sold Out ({outOfStockCount})</option>
+</select>
+
+<select
+  value={missingFieldFilter}
+  onChange={(e) =>
+    setMissingFieldFilter(
+      e.target.value as "ALL" | "ANY" | "TAG" | "CATEGORY" | "BRAND" | "TYPE" | "CALIBER" | "PHOTOS" | "DESCRIPTION"
+    )
+  }
+  className="rounded border border-[#333] bg-[#1a1a1a] px-3 py-2 text-sm text-white max-w-full"
+>
+  <option value="ALL">All Fields Present (Audit OK)</option>
+  <option value="ANY">Any Missing Field (Audit Error)</option>
+  <option value="TAG">Missing Tag</option>
+  <option value="CATEGORY">Missing Category</option>
+  <option value="BRAND">Missing Brand</option>
+  <option value="TYPE">Missing Type</option>
+  <option value="CALIBER">Missing Caliber</option>
+  <option value="PHOTOS">Missing Photos</option>
+  <option value="DESCRIPTION">Missing Description</option>
+</select>
           <AdminCreateProduct buttonClassName="px-3 py-1.5 rounded bg-red-600 text-white text-sm border border-red-600 hover:bg-red-700 transition-colors" />
         </div>
       </div>
@@ -88,6 +566,234 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
           ))}
         </div>
       )}
+
+      <section id="admin-orders-section" className="mt-10 rounded-xl border border-[#333] bg-[#111] p-6">
+        <div className="flex items-center justify-between border-b border-[#333] pb-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Orders &amp; Users Management</h2>
+            <p className="text-sm text-gray-400">Review customer details, shipping details, and download user data.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportUsersCSV}
+              className="px-3 py-1.5 rounded bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold transition-colors flex items-center gap-1"
+              style={{
+                background: "linear-gradient(135deg, #2196f3 0%, #1976d2 100%)",
+                border: "none",
+              }}
+            >
+              Export Users to CSV
+            </button>
+            <button
+              onClick={handleExportCSV}
+              className="px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors flex items-center gap-1"
+              style={{
+                background: "linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)",
+                border: "none",
+              }}
+            >
+              Export Orders to CSV
+            </button>
+            <span className="text-sm text-gray-400">{orders.length} orders</span>
+          </div>
+        </div>
+
+        {ordersLoading ? (
+          <p className="text-gray-400">Loading orders...</p>
+        ) : orders.length === 0 ? (
+          <p className="text-gray-400">No orders found.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {orders.map((order) => (
+              <div key={order.id} className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+                <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <p className="font-semibold text-white">Customer Details</p>
+                    <p><span className="text-gray-500">Name:</span> {order.fullName || '—'}</p>
+                    <p><span className="text-gray-500">Email:</span> {order.email || '—'}</p>
+                    <p><span className="text-gray-500">Phone:</span> {order.phoneNumber || '—'}</p>
+
+                    <p className="pt-2 font-semibold text-white">Shipping Details</p>
+                    <p><span className="text-gray-500">Address:</span> {order.fullAddress || '—'}</p>
+                    <p><span className="text-gray-500">City / State:</span> {order.city || '—'}{order.city && order.state ? `, ${order.state}` : ''}</p>
+                    <p><span className="text-gray-500">Country / Pincode:</span> {order.country || '—'}{order.country && order.pincode ? ` / ${order.pincode}` : ''}</p>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <p className="font-semibold text-white">Order Details</p>
+                    <p><span className="text-gray-500">Products:</span> {order.products.map((item) => `${item.name} × ${item.quantity}`).join(', ') || '—'}</p>
+                    <p><span className="text-gray-500">Total Amount:</span> ₹{order.total.toLocaleString('en-IN')}</p>
+                    <p><span className="text-gray-500">Razorpay Payment ID:</span> {order.razorpayPaymentId || '—'}</p>
+                    <p><span className="text-gray-500">Payment Status:</span> {order.paymentStatus}</p>
+                    <p><span className="text-gray-500">Order Status:</span> {order.orderStatus}</p>
+                    <p><span className="text-gray-500">Date:</span> {new Date(order.createdAt).toLocaleString('en-IN')}</p>
+                    <label className="block pt-2 text-xs uppercase tracking-wide text-gray-500">
+                      Update Status
+                      <select
+                        value={order.orderStatus}
+                        onChange={(event) => void handleStatusChange(order.id, event.target.value)}
+                        className="mt-2 w-full rounded border border-[#333] bg-[#0f0f0f] px-3 py-2 text-sm text-white"
+                      >
+                        <option value="PENDING">PENDING</option>
+                        <option value="PAID">PAID</option>
+                        <option value="COMPLETED">COMPLETED</option>
+                        <option value="CANCELLED">CANCELLED</option>
+                        <option value="FAILED">FAILED</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Returns Management Section */}
+      <section id="admin-returns-section" className="mt-10 rounded-xl border border-[#333] bg-[#111] p-6">
+        <div className="flex items-center justify-between border-b border-[#333] pb-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Returns Management</h2>
+            <p className="text-sm text-gray-400">Review customer return requests, reasons, uploaded photos, and update their statuses.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportReturnsCSV}
+              className="px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)",
+                border: "none",
+              }}
+            >
+              Export Returns to CSV
+            </button>
+            <span className="text-sm text-gray-400">{returns.length} return requests</span>
+          </div>
+        </div>
+
+        {returnsLoading ? (
+          <p className="text-gray-400">Loading return requests...</p>
+        ) : returns.length === 0 ? (
+          <p className="text-gray-400">No return requests found.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {returns.map((req) => (
+              <div key={req.id} className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+                <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+                  <div className="space-y-2 text-sm text-gray-300">
+                    <p className="font-semibold text-white">Customer & Order Info</p>
+                    <p><span className="text-gray-500">Customer:</span> {req.customerName} ({req.customerEmail})</p>
+                    <p><span className="text-gray-500">Order ID:</span> #{req.orderId}</p>
+                    <p><span className="text-gray-500">Order Amount:</span> ₹{req.totalAmount.toLocaleString('en-IN')}</p>
+                    <p><span className="text-gray-500">Requested:</span> {new Date(req.createdAt).toLocaleString('en-IN')}</p>
+                    
+                    <p className="pt-2 font-semibold text-white">Reason for Return</p>
+                    <p className="italic bg-[#111] p-3 rounded border border-[#333] text-gray-400">{req.reason}</p>
+                  </div>
+
+                  <div className="space-y-4 text-sm text-gray-300">
+                    <div>
+                      <p className="font-semibold text-white mb-2">Uploaded Picture</p>
+                      {req.photoUrl ? (
+                        <div className="relative w-32 h-32 rounded-lg border border-[#333] bg-black/40 overflow-hidden group cursor-pointer">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img 
+                            src={req.photoUrl} 
+                            alt="Return product" 
+                            className="w-full h-full object-contain transition-transform duration-200 group-hover:scale-110"
+                            onClick={() => window.open(req.photoUrl, "_blank")}
+                          />
+                        </div>
+                      ) : (
+                        <p className="text-red-500 text-xs font-semibold">No Image Provided</p>
+                      )}
+                    </div>
+
+                    <label className="block text-xs uppercase tracking-wide text-gray-500">
+                      Update Return Status
+                      <select
+                        value={req.status}
+                        onChange={(event) => void handleReturnStatusUpdate(req.id, event.target.value)}
+                        className="mt-2 w-full rounded border border-[#333] bg-[#0f0f0f] px-3 py-2 text-sm text-white cursor-pointer"
+                      >
+                        <option value="PENDING">PENDING</option>
+                        <option value="APPROVED">APPROVED (Refunded / Returned)</option>
+                        <option value="REJECTED">REJECTED (Declined)</option>
+                      </select>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* Feedbacks / Complaints / Testimonials Management Section */}
+      <section id="admin-feedbacks-section" className="mt-10 rounded-xl border border-[#333] bg-[#111] p-6">
+        <div className="flex items-center justify-between border-b border-[#333] pb-4 mb-4">
+          <div>
+            <h2 className="text-xl font-semibold">Feedbacks, Complaints &amp; Testimonials</h2>
+            <p className="text-sm text-gray-400">Review feedback submissions, log issues/complaints, and approve testimonials to display on the Home page.</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={handleExportFeedbacksCSV}
+              className="px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold transition-colors flex items-center gap-1 cursor-pointer"
+              style={{
+                background: "linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)",
+                border: "none",
+              }}
+            >
+              Export Feedbacks to CSV
+            </button>
+            <span className="text-sm text-gray-400">{feedbacks.length} submissions</span>
+          </div>
+        </div>
+
+        {feedbacksLoading ? (
+          <p className="text-gray-400">Loading feedbacks...</p>
+        ) : feedbacks.length === 0 ? (
+          <p className="text-gray-400">No submissions found.</p>
+        ) : (
+          <div className="flex flex-col gap-4">
+            {feedbacks.map((f) => (
+              <div key={f.id} className="rounded-lg border border-[#2a2a2a] bg-[#1a1a1a] p-4">
+                <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                  <div className="space-y-1.5 text-sm flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className={`px-2 py-0.5 rounded text-xs font-bold text-white uppercase tracking-wider ${
+                        f.type === "COMPLAINT" ? "bg-red-600" :
+                        f.type === "TESTIMONIAL" ? "bg-purple-600" : "bg-blue-600"
+                      }`}>
+                        {f.type}
+                      </span>
+                      <span className="text-gray-500 text-xs">Submitted on {new Date(f.createdAt).toLocaleDateString("en-IN")}</span>
+                    </div>
+                    <p className="text-white text-base leading-relaxed">{f.content}</p>
+                    <p className="text-xs text-gray-500 pt-1">By: <strong className="text-gray-300">{f.userName}</strong> ({f.userEmail})</p>
+                  </div>
+
+                  {f.type === "TESTIMONIAL" && (
+                    <div className="flex items-center gap-2 bg-[#111] p-3 rounded-lg border border-[#333] shrink-0">
+                      <label className="text-xs text-gray-400 cursor-pointer select-none" htmlFor={`home-toggle-${f.id}`}>
+                        Show on Home Page
+                      </label>
+                      <input 
+                        id={`home-toggle-${f.id}`}
+                        type="checkbox"
+                        checked={f.showOnHome}
+                        onChange={(e) => void handleShowOnHomeChange(f.id, e.target.checked)}
+                        className="w-4 h-4 accent-red-600 cursor-pointer"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </main>
   );
 }

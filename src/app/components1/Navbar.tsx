@@ -1,7 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import { FaShoppingCart, FaUser, FaHeart, FaStore } from "react-icons/fa";
+import {
+  FaShoppingCart,
+  FaUser,
+  FaHeart,
+  FaStore,
+  FaHome,
+  FaCalendarAlt,
+} from "react-icons/fa";
 import SearchBar from "./SearchBar";
 import ProtectedLink from "./ProtectedLink";
 
@@ -35,6 +42,13 @@ export default function Navbar() {
         <div className="w-full md:w-[280px]">
           <SearchBar />
         </div>
+        
+        {/* HOME */}
+<div className="relative">
+  <Link href="/" title="Home">
+    <FaHome className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
+  </Link>
+</div>
 
         {/* SHOP */}
         <div className="relative">
@@ -77,13 +91,20 @@ export default function Navbar() {
             <FaShoppingCart className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
           </ProtectedLink>
 
-          {/* Badge (optional)
-          <span className="absolute -top-2 -right-2 bg-red-600 text-xs px-1.5 rounded-full">
-            2
-          </span>
-          */}
-        </div>
+          
 
+        </div>
+{/* BOOK APPOINTMENT */}
+<div className="relative">
+  <ProtectedLink
+    href="/appointment"
+    title="Book Appointment"
+    authTitle="Sign in to book an appointment"
+    authMessage="Please sign in with Google to book an appointment."
+  >
+    <FaCalendarAlt className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
+  </ProtectedLink>
+</div>
         {/* PROFILE */}
         <ProtectedLink
           href="/profile"

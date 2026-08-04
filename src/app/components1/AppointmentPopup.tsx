@@ -10,8 +10,8 @@ interface AppointmentPopupProps {
 }
 
 // Contact details
-const CONTACT_EMAIL = "kgh.appointments@example.com";
-const CONTACT_PHONE = "+1 (555) 123-4567";
+const CONTACT_EMAIL = "kathuriagunhouse@gmail.com";
+
 
 export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
   const [existingAppointment, setExistingAppointment] = useState<AppointmentData | null>(null);
@@ -156,16 +156,18 @@ export default function AppointmentPopup({ onClose }: AppointmentPopupProps) {
             {existingAppointment.status === 'DECLINED' && (
               <div className="declined-notice">
                 <p><strong>Your appointment request was declined.</strong></p>
-                <p>For further details, please contact us:</p>
+                {existingAppointment.remarks && (
+                  <p className="mt-2 text-red-500 text-sm"><strong>Remarks:</strong> {existingAppointment.remarks}</p>
+                )}
+                <p className="mt-2">For further details, please contact us:</p>
                 <p>Email: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
-                <p>Phone: <a href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}>{CONTACT_PHONE}</a></p>
               </div>
             )}
 
             {existingAppointment.status === 'APPROVED' && (
               <div className="approved-notice">
                 <p>✓ Your appointment has been confirmed!</p>
-                <p>We&apos;ll contact you at: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>
+          {/*      <p>We&apos;ll contact you at: {CONTACT_EMAIL} | {CONTACT_PHONE}</p>*/}
               </div>
             )}
 

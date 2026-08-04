@@ -84,7 +84,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
 
             <div className="buttons">
-              <AddToCartButton productId={product.id} />
+              <AddToCartButton productId={product.id} licenseRequired={product.licenseRequired} />
               <WishlistButton productId={product.id} />
               <ShareButton title={product.name} url={`https://example.com/product/${product.id}`} />
             </div>

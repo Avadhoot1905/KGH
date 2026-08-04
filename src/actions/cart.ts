@@ -99,6 +99,7 @@ export async function updateProductQuantityInCart(productId: string, delta: numb
 
 export type CartListItem = {
   id: string;
+  productId: string;
   name: string;
   category: string;
   brand: string;
@@ -132,6 +133,7 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
     const primary = c.product.photos.find((p) => p.isPrimary) ?? c.product.photos[0];
     return {
       id: c.id,
+      productId: c.productId,
       name: c.product.name,
       category: c.product.category.name,
       brand: c.product.brand.name,
@@ -176,5 +178,28 @@ export async function updateCartItemQuantity(cartItemId: string, delta: number) 
   const updated = await prisma.cart.update({ where: { id: current.id }, data: { quantity: nextQty } });
   return { quantity: updated.quantity } as const;
 }
+
+export async function moveCartItemToWishlist(cartItemId: string, productId: string) {
+  if (!cartItemId || !productId) throw new Error("cartItemId and productId are required");
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+
+  return prisma.$transaction(async (tx) => {
+    // 1. Delete from cart
+    await tx.cart.deleteMany({ where: { id: cartItemId, userId: user.id } });
+    
+    // 2. Add to wishlist if not already there
+    const existingWishlist = await tx.wishlist.findFirst({ where: { userId: user.id, productId } });
+    if (!existingWishlist) {
+      await tx.wishlist.create({ data: { userId: user.id, productId } });
+    }
+    
+    return { success: true };
+  });
+}
+
 
 

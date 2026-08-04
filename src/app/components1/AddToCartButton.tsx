@@ -9,9 +9,21 @@ type AddToCartButtonProps = {
   productId: string;
   disabled?: boolean;
   className?: string;
+  licenseRequired?: boolean;
 };
 
-function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToCartButtonProps) {
+// Reusable animated target/crosshair spinner matching the shooting theme
+function TargetLoader({ className = "w-4 h-4" }: { className?: string }) {
+  return (
+    <svg className={`animate-spin ${className} text-current`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <circle cx="12" cy="12" r="9" className="opacity-25" />
+      <path d="M12 2v4M12 18v4M2 12h4M18 12h4" strokeLinecap="round" />
+      <circle cx="12" cy="12" r="2" fill="currentColor" />
+    </svg>
+  );
+}
+
+function AddToCartButtonInner({ productId, disabled, className = "red", licenseRequired }: AddToCartButtonProps) {
   const [quantity, setQuantity] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -61,6 +73,44 @@ function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToC
     }
   };
 
+  if (licenseRequired) {
+    return (
+      <span className="text-xs uppercase tracking-wider font-semibold text-red-500 bg-red-950/30 px-2.5 py-1 rounded border border-red-900/50">
+        License Required
+      </span>
+    );
+  }
+
+  if (loading) {
+    return (
+      <button className={`${className} flex items-center justify-center gap-1.5`} disabled style={{ padding: "8px 16px", borderRadius: "4px", opacity: 0.7 }}>
+        <TargetLoader />
+        <span>Loading...</span>
+      </button>
+    );
+  }
+
+  if (quantity === 0) {
+    return (
+      <button
+        type="button"
+        onClick={() => handleQuantityChange(1)}
+        disabled={disabled || updating}
+        className={`${className} flex items-center justify-center gap-1.5`}
+        style={{ padding: "8px 16px", borderRadius: "4px", fontWeight: "bold" }}
+      >
+        {updating ? (
+          <>
+            <TargetLoader />
+            <span>Adding...</span>
+          </>
+        ) : (
+          "Add to Cart"
+        )}
+      </button>
+    );
+  }
+
   return (
     <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
       <button
@@ -68,19 +118,19 @@ function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToC
         onClick={() => handleQuantityChange(-1)}
         disabled={disabled || updating || quantity <= 0}
         className={className}
-        style={{ minWidth: 38, padding: "8px 10px" }}
+        style={{ minWidth: 38, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         −
       </button>
-      <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700 }}>
-        {loading ? "…" : updating ? "…" : quantity}
+      <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
+        {updating ? <TargetLoader /> : quantity}
       </span>
       <button
         type="button"
         onClick={() => handleQuantityChange(1)}
         disabled={disabled || updating}
         className={className}
-        style={{ minWidth: 38, padding: "8px 10px" }}
+        style={{ minWidth: 38, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         +
       </button>
@@ -90,10 +140,13 @@ function AddToCartButtonInner({ productId, disabled, className = "red" }: AddToC
 
 export default function AddToCartButton(props: AddToCartButtonProps) {
   return (
-    <Suspense fallback={<button className={props.className} disabled>Loading...</button>}>
+    <Suspense fallback={
+      <button className={`${props.className} flex items-center justify-center gap-1.5`} disabled style={{ padding: "8px 16px", borderRadius: "4px", opacity: 0.7 }}>
+        <TargetLoader />
+        <span>Loading...</span>
+      </button>
+    }>
       <AddToCartButtonInner {...props} />
     </Suspense>
   );
 }
-
-

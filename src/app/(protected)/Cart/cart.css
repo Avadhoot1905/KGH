@@ -200,12 +200,11 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
   /* Ensure cart items appear before the summary on mobile */
   .cart-summary {
     order: 2;
+    width: 100%;
   }
-}
 
-@media (max-width: 768px) {
   .cart-item {
-    flex-direction: column; /* stack vertically instead of side by side */
+    flex-direction: column;
     align-items: flex-start;
   }
 
@@ -214,6 +213,14 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
     height: auto;
     position: relative;
     margin-bottom: 0.8rem;
+    min-height: 180px;
+  }
+
+  .cart-item-img {
+    width: 100%;
+    height: 200px;
+    border-radius: 12px;
+    margin-right: 0;
   }
 
   .cart-item-details {
@@ -222,10 +229,10 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
 
   .cart-item-actions {
     display: flex;
-    flex-direction: column-reverse; /* description ABOVE price */
-    align-items: flex-start;
+    flex-direction: column;
+    align-items: stretch;
     width: 100%;
-    gap: 0.5rem;
+    gap: 0.75rem;
   }
 
   .cart-item-price {
@@ -238,4 +245,10 @@ background: linear-gradient(135deg, #27ae60, #2ecc71);
     top: 10px;
     right: 10px;
   }
+
+  .checkout-btn,
+  .continue-btn {
+    width: 100%;
+  }
 }
+

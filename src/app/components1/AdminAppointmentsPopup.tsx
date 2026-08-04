@@ -10,8 +10,9 @@ interface AdminAppointmentsPopupProps {
 }
 
 // Contact details
-const CONTACT_EMAIL = "kgh.appointments@example.com";
-const CONTACT_PHONE = "+1 (555) 123-4567";
+const CONTACT_EMAIL = "kathuriagunhouse@gmail.com";
+const CONTACT_PHONE = "+91 8054218777";
+const CONTACT_PHONE_2 = "+91 7888574282";
 
 export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPopupProps) {
   const [appointments, setAppointments] = useState<AppointmentData[]>([]);
@@ -54,10 +55,12 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
   };
 
   const handleDecline = async (appointmentId: string) => {
+    const remarks = prompt("Enter rejection remarks for the customer (optional):");
+    if (remarks === null) return; // cancelled prompt
     try {
       setProcessingId(appointmentId);
       setError(null);
-      const updated = await declineAppointment(appointmentId);
+      const updated = await declineAppointment(appointmentId, remarks);
       setAppointments(prev => 
         prev.map(apt => apt.id === appointmentId ? updated : apt)
       );
@@ -106,6 +109,7 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
           <div className="contact-info">
             <p><strong>Contact:</strong> {CONTACT_EMAIL}</p>
             <p><strong>Phone:</strong> {CONTACT_PHONE}</p>
+            <p><strong>Phone 2:</strong> {CONTACT_PHONE_2}</p>
           </div>
         </div>
 
@@ -205,6 +209,9 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
 
                 {appointment.status === 'DECLINED' && (
                   <div className="declined-message">
+                    {appointment.remarks && (
+                      <p className="mb-2 text-red-400"><strong>Remarks:</strong> {appointment.remarks}</p>
+                    )}
                     <p><strong>Note:</strong> For further details, please contact us at:</p>
                     <p>Email: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a></p>
                     <p>Phone: <a href={`tel:${CONTACT_PHONE.replace(/\s/g, '')}`}>{CONTACT_PHONE}</a></p>

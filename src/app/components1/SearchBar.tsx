@@ -32,18 +32,18 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
   const containerRef = useRef<HTMLDivElement | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const data = await getSearchIndex();
-        if (active) setIndex(data as SearchIndexItem[]);
-      } catch {}
-    })();
-    return () => {
-      active = false;
-    };
-  }, []);
+  const [indexLoaded, setIndexLoaded] = useState(false);
+
+  async function ensureSearchIndexLoaded() {
+    if (indexLoaded) return;
+    try {
+      const data = await getSearchIndex();
+      setIndex(data as SearchIndexItem[]);
+      setIndexLoaded(true);
+    } catch (error) {
+      console.error("Failed to load search index:", error);
+    }
+  }
 
   const fuse = useMemo(() => {
     return new Fuse(index, {
@@ -111,7 +111,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
   };
 
   return (
-    <div ref={containerRef} className={className} style={{ position: "relative", minWidth: 260 }}>
+    <div ref={containerRef} className={className} style={{ position: "relative", minWidth: 0, width: "100%" }}>
       <div style={{ position: "relative" }}>
         {/* Search Icon */}
         <svg
@@ -171,6 +171,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={(e) => {
+            void ensureSearchIndexLoaded();
             setIsOpen(results.length > 0);
             e.target.style.borderColor = "#dc2626";
           }}

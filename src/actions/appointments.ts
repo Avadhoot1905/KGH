@@ -38,6 +38,7 @@ export type AppointmentData = {
   date: string;
   time: string;
   reason: string;
+  remarks?: string | null;
   status: AppointmentStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -242,7 +243,7 @@ export async function approveAppointment(appointmentId: string) {
 }
 
 // Admin: Decline an appointment
-export async function declineAppointment(appointmentId: string) {
+export async function declineAppointment(appointmentId: string, remarks?: string) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
@@ -259,6 +260,7 @@ export async function declineAppointment(appointmentId: string) {
     },
     data: {
       status: "DECLINED",
+      remarks: remarks || null,
     },
     include: {
       user: {

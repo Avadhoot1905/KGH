@@ -1,74 +1,68 @@
+import Image from "next/image";
 import { FaFacebookF, FaYoutube } from "react-icons/fa";
-
 export default function Footer() {
   return (
     <footer className="bg-black text-gray-300 py-8 px-6 md:px-12">
-      <div className="max-w-7xl mx-auto grid md:grid-cols-3 gap-8">
+      <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-start justify-between gap-8">
         {/* === ABOUT === */}
-        <div>
-          <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
-            About
-          </h4>
-          <p className="text-sm leading-relaxed">
-            We are an{" "}
-            <span className="text-red-400 font-semibold">
-              Authorized Service Centre
-            </span>{" "}
-            for{" "}
-            <span className="font-semibold text-white">Precihole Sports</span>,
-            India’s leading airgun manufacturer. Our certified technicians
-            ensure reliable, high-quality service using genuine parts.
-          </p>
-        </div>
+       {/* === ABOUT === */}
+<div className="w-full md:w-[48%] min-w-0 md:pl-4 lg:pl-2">
+  <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
+    About
+  </h4>
 
-        {/* === QUICK LINKS === 
-        <div>
-          <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
-            Quick Links
-          </h4>
-          <ul className="space-y-2 text-sm">
-            <li>
-              <a href="#" className="hover:text-red-400 transition">
-                Who We Are
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-red-400 transition">
-                Book Appointment
-              </a>
-            </li>
-            <li>
-              <a href="#" className="hover:text-red-400 transition">
-                Privacy Policy
-              </a>
-            </li>
-          </ul>
-        </div>
-        */}
+  <p className="text-sm leading-relaxed">
+    We are an{" "}
+    <span className="text-red-400 font-semibold">
+      Authorized Service Centre
+    </span>{" "}
+    for{" "}
+    <span className="font-semibold text-white">
+      Precihole Sports
+    </span>
+    , India’s leading airgun manufacturer. Our certified technicians
+    ensure reliable, high-quality service using genuine parts.
+  </p>
+
+  <div className="mt-5">
+    <Image
+    src="/precihole1.png"
+    alt="Precihole Sports"
+    width={190}
+    height={65}
+    className="object-contain opacity-95 hover:opacity-100 transition"
+/>
+  </div>
+</div>
+        
 
         {/* === CONTACT === */}
-        <div>
+        <div className="w-full md:w-[45%] min-w-0 md:text-right">
           <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
             Contact
           </h4>
-          <p className="text-sm mb-2">
-            <span className="font-semibold">Ph. No:</span> +91 8054218777
-          </p>
-          <p className="text-sm mb-2">
-            <span className="font-semibold">Address:</span> Tehsil Road, Sri
-            Muktsar Sahib Malout, PIN 152107, Punjab
-          </p>
-          <p className="text-sm">
-            <span className="font-semibold">Email:</span>{" "}
-            <a
-              href="mailto:kathuriagunhouse@gmail.com"
-              className="hover:text-red-400 transition"
-            >
-              kathuriagunhouse@gmail.com
-            </a>
-          </p>
+          <div className="flex flex-col items-start md:items-end">
+            
+            <p className="text-sm mb-2">
+              <span className="font-semibold">Address:</span> Kathuria Gun House, Tehsil Road,Malout, 
+            </p>
+            
+            <p className="text-sm mb-2">
+              <span className="font-semibold"></span> Sri
+              Muktsar Sahib, PIN 152107, Punjab
+            </p>
+             <p className="text-sm">
+              <span className="font-semibold">Email:</span>{" "}
+              <a
+                href="mailto:kathuriagunhouse@gmail.com"
+                className="hover:text-red-400 transition"
+              >
+                kathuriagunhouse@gmail.com
+              </a>
+            </p>
+          </div>
 
-          <div className="flex space-x-4 mt-3">
+          <div className="flex flex-wrap justify-center md:justify-end gap-3 mt-3">
             <a
               href="https://www.facebook.com/kathuriagunhouse/"
               target="_blank"

@@ -4,6 +4,7 @@ import "./globals.css";
 import ClientAuthPopup from "./shared/ClientAuthPopup";
 import NextAuthProvider from "./components1/NextAuthProvider";
 import ConditionalAppointmentButton from "./components1/ConditionalAppointmentButton";
+import ConditionalFeedbackButton from "./components1/ConditionalFeedbackButton";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -34,6 +35,7 @@ export default function RootLayout({
           {children}
           <ClientAuthPopup />
           <ConditionalAppointmentButton />
+          <ConditionalFeedbackButton />
         </NextAuthProvider>
       </body>
     </html>

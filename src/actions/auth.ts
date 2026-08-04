@@ -2,6 +2,7 @@
 
 import { authOptions } from "@/auth";
 import { getServerSession } from "next-auth";
+import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
 
 export async function getAuthState() {
@@ -19,6 +20,15 @@ export type CurrentUser = {
   image: string | null;
   contact?: string | null;
   phoneNumber?: string | null;
+  addressLine1?: string | null;
+  addressLine2?: string | null;
+  landmark?: string | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  postalCode?: string | null;
+  alternatePhone?: string | null;
+  profileCompleted?: boolean | null;
   createdAt?: Date | null;
 };
 
@@ -49,6 +59,15 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
     image: user.image ?? null,
     contact: user.contact ?? null,
     phoneNumber: user.phoneNumber ?? null,
+    addressLine1: user.addressLine1 ?? null,
+    addressLine2: user.addressLine2 ?? null,
+    landmark: user.landmark ?? null,
+    city: user.city ?? null,
+    state: user.state ?? null,
+    country: user.country ?? null,
+    postalCode: user.pincode ?? null,
+    alternatePhone: user.alternatePhone ?? null,
+    profileCompleted: user.profileCompleted ?? false,
     createdAt: user.createdAt ?? null,
   };
 }
@@ -63,6 +82,40 @@ export async function getGoogleSignInUrl(callbackPath?: string) {
   const signinUrl = new URL("/api/auth/signin/google", baseUrl);
   signinUrl.searchParams.set("callbackUrl", callbackUrl);
   return signinUrl.toString();
+}
+
+export async function registerCredentialsUser(data: { name: string; email: string; phoneNumber: string; password: string }) {
+  const { PrismaClient } = await import("@prisma/client");
+  const globalAny = global as { __PRISMA__?: InstanceType<typeof PrismaClient> };
+  let prisma = globalAny.__PRISMA__ as InstanceType<typeof PrismaClient> | undefined;
+  if (!prisma) {
+    prisma = new PrismaClient();
+    if (process.env.NODE_ENV !== "production") {
+      globalAny.__PRISMA__ = prisma;
+    }
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { email: data.email },
+  });
+
+  if (existingUser) {
+    throw new Error("Email already registered. Please sign in instead.");
+  }
+
+  const hashedPassword = await bcrypt.hash(data.password, 10);
+
+  const user = await prisma.user.create({
+    data: {
+      name: data.name,
+      email: data.email,
+      phoneNumber: data.phoneNumber,
+      password: hashedPassword,
+      profileCompleted: true,
+    },
+  });
+
+  return { success: true, email: user.email };
 }
 
 

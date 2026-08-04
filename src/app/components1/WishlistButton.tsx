@@ -4,6 +4,7 @@ import { useState, Suspense } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { getAuthState } from "@/actions/auth";
 import { toggleWishlist as toggleWishlistAction } from "@/actions/wishlist";
+import { FaHeart, FaRegHeart, FaSpinner } from "react-icons/fa";
 
 type WishlistButtonProps = {
   productId: string;
@@ -11,7 +12,7 @@ type WishlistButtonProps = {
   className?: string;
 };
 
-function WishlistButtonInner({ productId, isWishlisted = false, className = "outline" }: WishlistButtonProps) {
+function WishlistButtonInner({ productId, isWishlisted = false }: WishlistButtonProps) {
   const [wishlisted, setWishlisted] = useState(isWishlisted);
   const [saving, setSaving] = useState(false);
   const pathname = usePathname();
@@ -40,17 +41,35 @@ function WishlistButtonInner({ productId, isWishlisted = false, className = "out
   };
 
   return (
-    <div style={{ display: "inline-flex", gap: 8, alignItems: "center" }}>
-      <button className={className} onClick={onToggleWishlist} aria-pressed={wishlisted}>
-        {saving ? "Saving..." : wishlisted ? "💖 Wishlisted" : "❤️ Wishlist"}
-      </button>
-    </div>
+    <button 
+      className={`wishlist-detail-btn ${wishlisted ? "active" : ""} ${saving ? "saving" : ""}`} 
+      onClick={onToggleWishlist} 
+      aria-pressed={wishlisted}
+      disabled={saving}
+    >
+      {saving ? (
+        <>
+          <FaSpinner className="animate-spin" />
+          <span>Saving...</span>
+        </>
+      ) : wishlisted ? (
+        <>
+          <FaHeart className="heart-icon active" />
+          <span>Wishlisted</span>
+        </>
+      ) : (
+        <>
+          <FaRegHeart className="heart-icon" />
+          <span>Add to Wishlist</span>
+        </>
+      )}
+    </button>
   );
 }
 
 export default function WishlistButton(props: WishlistButtonProps) {
   return (
-    <Suspense fallback={<button className={props.className} disabled>Loading...</button>}>
+    <Suspense fallback={<button className="wishlist-detail-btn saving" disabled><FaSpinner className="animate-spin" /> <span>Loading...</span></button>}>
       <WishlistButtonInner {...props} />
     </Suspense>
   );

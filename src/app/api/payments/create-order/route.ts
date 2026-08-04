@@ -33,6 +33,18 @@ export async function POST() {
       );
     }
 
+    const profileCompleted = Boolean(
+      user.profileCompleted ||
+      (user.name && user.phoneNumber && user.addressLine1 && user.city && user.state && user.country && user.pincode)
+    );
+
+    if (!profileCompleted) {
+      return NextResponse.json(
+        { error: 'Please complete your profile before proceeding to payment.' },
+        { status: 400 }
+      );
+    }
+
     const userId = user.id;
 
     // Fetch cart items from database (server-side calculation)
@@ -58,7 +70,24 @@ export async function POST() {
       (acc: number, item: { product: { price: number }, quantity: number }) => acc + item.product.price * item.quantity,
       0
     );
-    const shipping = 9.99;
+
+    // Validate stock and license required for each item
+    for (const item of cartItems) {
+      if (item.product.quantity < item.quantity) {
+        return NextResponse.json(
+          { error: `Insufficient stock for "${item.product.name}". Only ${item.product.quantity} items left.` },
+          { status: 400 }
+        );
+      }
+      if (item.product.licenseRequired) {
+        return NextResponse.json(
+          { error: `"${item.product.name}" requires a valid arms license. Please contact the store directly.` },
+          { status: 400 }
+        );
+      }
+    }
+
+    const shipping = subtotal * 0.05; // 5% of product subtotal price
     const tax = subtotal * 0.0875;
     const total = subtotal + shipping + tax;
 
@@ -80,11 +109,25 @@ export async function POST() {
     const order = await prisma.order.create({
       data: {
         userId,
+        fullName: user.name ?? '',
+        email: user.email ?? '',
+        phoneNumber: user.phoneNumber ?? '',
+        addressLine1: user.addressLine1 ?? '',
+        addressLine2: user.addressLine2 ?? null,
+        landmark: user.landmark ?? null,
+        city: user.city ?? '',
+        state: user.state ?? '',
+        country: user.country ?? '',
+        pincode: user.pincode ?? '',
+        subtotal,
+        shippingCost: shipping,
+        discount: 0,
+        tax,
         total,
         status: 'PENDING',
         razorpayOrderId: razorpayOrder.id,
         items: {
-          create: cartItems.map((item: { product: { id: string, price: number }, quantity: number }) => ({
+          create: cartItems.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
             price: item.product.price,

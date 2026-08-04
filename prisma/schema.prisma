@@ -34,24 +34,35 @@ model Session {
 }
 
 model User {
-  id             String        @id @default(cuid())
-  name           String?
-  email          String?       @unique
-  emailVerified  DateTime?
-  image          String?
-  contact        String?
-  role           Role          @default(NORMAL_USER)
-  createdAt      DateTime      @default(now())
-  updatedAt      DateTime      @updatedAt
-  phoneNumber    String?
-  accounts       Account[]
-  cartItems      Cart[]
-  orders         Order[]
-  sessions       Session[]
-  wishlistItems  Wishlist[]
-  appointments   Appointment[]
-  reviews        Review[]
-  viewedProducts Product[]     @relation("ViewedBy")
+  id               String        @id @default(cuid())
+  name             String?
+  email            String?       @unique
+  emailVerified    DateTime?
+  image            String?
+  contact          String?
+  password         String?
+  role             Role          @default(NORMAL_USER)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  phoneNumber      String?
+  addressLine1     String?
+  addressLine2     String?
+  landmark         String?
+  city             String?
+  state            String?
+  country          String?
+  pincode          String?
+  alternatePhone   String?
+  profileCompleted Boolean       @default(false)
+  accounts         Account[]
+  cartItems        Cart[]
+  orders           Order[]
+  sessions         Session[]
+  wishlistItems    Wishlist[]
+  appointments     Appointment[]
+  reviews          Review[]
+  viewedProducts   Product[]     @relation("ViewedBy")
+  feedbacks        Feedback[]
 }
 
 model VerificationToken {
@@ -63,36 +74,41 @@ model VerificationToken {
 }
 
 model Product {
-  id              String      @id @default(cuid())
+  id              String    @id @default(cuid())
   name            String
   price           Float
   description     String
   quantity        Int
-  licenseRequired Boolean     @default(false)
+  licenseRequired Boolean   @default(false)
   tag             String?
-  addedAt         DateTime?   @default(now())
+  addedAt         DateTime? @default(now())
   removedAt       DateTime?
   categoryId      String
-  createdAt       DateTime    @default(now())
-  updatedAt       DateTime    @updatedAt
-  averageRating   Float?      @default(0)
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  averageRating   Float?    @default(0)
   brandId         String
   caliberId       String
-  totalRating     Int         @default(0)
-  totalReviews    Int         @default(0)
+  totalRating     Int       @default(0)
+  totalReviews    Int       @default(0)
   typeId          String
-  cartItems       Cart[]
-  orderItems      OrderItem[]
-  photos          Photo[]
-  brand           Brand       @relation(fields: [brandId], references: [id])
-  caliber         Caliber     @relation(fields: [caliberId], references: [id])
-  category        Category    @relation(fields: [categoryId], references: [id])
-  type            Type        @relation(fields: [typeId], references: [id])
-  wishlistItems   Wishlist[]
-  reviews         Review[]
-  relatedProducts  Product[]   @relation("RelatedProducts")
-  relatedToProducts Product[]  @relation("RelatedProducts")
-  viewedBy        User[]      @relation("ViewedBy")
+
+  cartItems  Cart[]
+  orderItems OrderItem[]
+  photos     Photo[]
+
+  brand    Brand    @relation(fields: [brandId], references: [id])
+  caliber  Caliber  @relation(fields: [caliberId], references: [id])
+  category Category @relation(fields: [categoryId], references: [id])
+  type     Type     @relation(fields: [typeId], references: [id])
+
+  wishlistItems Wishlist[]
+  reviews       Review[]
+
+  relatedProducts Product[] @relation("RelatedProducts")
+  relatedTo       Product[] @relation("RelatedProducts")
+
+  viewedBy User[] @relation("ViewedBy")
 }
 
 model Cart {
@@ -138,6 +154,7 @@ model Photo {
   url       String
   alt       String?
   isPrimary Boolean  @default(false)
+  position  Int      @default(0)
   productId String
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -180,15 +197,46 @@ model Review {
 
 model Order {
   id              String      @id @default(cuid())
+
   userId          String
+  user            User        @relation(fields: [userId], references: [id])
+
+  // Customer Snapshot
+  fullName        String
+  email           String
+  phoneNumber     String
+
+  // Shipping Snapshot
+  addressLine1    String
+  addressLine2    String?
+  landmark        String?
+  city            String
+  state           String
+  country         String
+  pincode         String
+
+  // Financial
+  subtotal        Float
+  shippingCost    Float       @default(0)
+  discount        Float       @default(0)
+  tax             Float       @default(0)
   total           Float
+
   status          OrderStatus @default(PENDING)
+
+  razorpayOrderId String?     @unique
+
+  // Shipping / Tracking
+  carrier         String?
+  trackingNumber  String?
+  trackingUrl     String?
+
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
-  razorpayOrderId String?     @unique
-  user            User        @relation(fields: [userId], references: [id])
+
   items           OrderItem[]
   payment         Payment?
+  returnRequests  ReturnRequest[]
 }
 
 model OrderItem {
@@ -224,6 +272,7 @@ model Appointment {
   date      String
   time      String
   reason    String
+  remarks   String?
   status    AppointmentStatus @default(PENDING)
   createdAt DateTime          @default(now())
   updatedAt DateTime          @updatedAt
@@ -232,6 +281,34 @@ model Appointment {
   @@index([userId])
   @@index([status])
   @@map("appointments")
+}
+
+model ReturnRequest {
+  id          String       @id @default(cuid())
+  orderId     String
+  order       Order        @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  reason      String
+  photoUrl    String       // mandatory image base64/url
+  status      ReturnStatus @default(PENDING)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([orderId])
+  @@map("return_requests")
+}
+
+model Feedback {
+  id         String       @id @default(cuid())
+  userId     String
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type       FeedbackType @default(FEEDBACK)
+  content    String
+  showOnHome Boolean      @default(false)
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  @@index([userId])
+  @@map("feedbacks")
 }
 
 enum Role {
@@ -245,6 +322,10 @@ enum OrderStatus {
   CANCELLED
   PAID
   FAILED
+  SHIPPED
+  DELIVERED
+  RETURN_REQUESTED
+  RETURNED
 }
 
 enum PaymentStatus {
@@ -258,4 +339,28 @@ enum AppointmentStatus {
   PENDING
   APPROVED
   DECLINED
+}
+
+enum ReturnStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum FeedbackType {
+  FEEDBACK
+  COMPLAINT
+  TESTIMONIAL
+}
+
+model OtpVerification {
+  id        String   @id @default(cuid())
+  email     String
+  phone     String
+  emailOtp  String
+  phoneOtp  String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@map("otp_verifications")
 }

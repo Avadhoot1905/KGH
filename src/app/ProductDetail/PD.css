@@ -33,6 +33,7 @@
 .product-gallery {
   flex: 1;
   min-width: 320px;
+  min-height: 320px;
 }
 
 .main-image {
@@ -66,24 +67,30 @@
   min-width: 320px;
 }
 
-.tags {
+.product-gallery,
+.product-info {
+  width: 100%;
+}
+
+.product-info .tags {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 1rem;
 }
 
-.tag {
+.product-info .tag {
+  position: static !important;
   font-size: 0.75rem;
   padding: 0.3rem 0.6rem;
   border-radius: 5px;
   color: white;
 }
 
-.tag.green {
+.product-info .tag.green {
   background: #228b22;
 }
 
-.tag.red {
+.product-info .tag.red {
   background: #ff3333;
 }
 
@@ -263,12 +270,142 @@ button.outline:hover {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .product-detail-page {
+    padding: 1rem;
+  }
+
   .product-main {
     flex-direction: column;
+    gap: 1.5rem;
   }
 
   .product-info,
   .product-gallery {
     min-width: 100%;
   }
+
+  .product-gallery {
+    min-height: 280px;
+  }
+
+  .product-title {
+    font-size: 1.8rem;
+  }
+
+  .price {
+    font-size: 1.4rem;
+  }
+
+  .buttons {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  button.red,
+  button.outline {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .product-detail-page {
+    padding: 0.8rem;
+  }
+
+  .product-title {
+    font-size: 1.5rem;
+  }
+
+  .price {
+    font-size: 1.2rem;
+  }
+
+  .tags {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+  }
+
+  .tag {
+    width: fit-content;
+  }
+}
+
+/* Premium Wishlist and Share Buttons in Product Details */
+.wishlist-detail-btn,
+.share-detail-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.6rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  padding: 0.75rem 1.5rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  min-width: 160px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.03);
+  color: #fff;
+  backdrop-filter: blur(5px);
+}
+
+.wishlist-detail-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.05);
+}
+
+.wishlist-detail-btn:active,
+.share-detail-btn:active {
+  transform: translateY(0);
+}
+
+.wishlist-detail-btn.active {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #ef4444;
+}
+
+.wishlist-detail-btn.active:hover {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: rgba(239, 68, 68, 0.6);
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.15);
+}
+
+.wishlist-detail-btn.saving {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.share-detail-btn:hover {
+  background: rgba(59, 130, 246, 0.1);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #3b82f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
+}
+
+.share-detail-btn.copied {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: rgba(16, 185, 129, 0.4);
+  color: #10b981;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+}
+
+.heart-icon,
+.share-icon {
+  font-size: 1.1rem;
+  transition: transform 0.2s ease;
+}
+
+.wishlist-detail-btn:hover .heart-icon {
+  transform: scale(1.2);
+}
+
+.share-detail-btn:hover .share-icon {
+  transform: rotate(15deg) scale(1.1);
 }

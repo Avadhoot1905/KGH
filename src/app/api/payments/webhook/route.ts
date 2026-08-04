@@ -90,7 +90,7 @@ async function handlePaymentCaptured(payload: unknown, eventPayload: string) {
     // Find the order by Razorpay order ID
     const order = await prisma.order.findFirst({
       where: { razorpayOrderId: order_id },
-      include: { payment: true },
+      include: { payment: true, items: true },
     });
 
     if (!order) {
@@ -104,7 +104,7 @@ async function handlePaymentCaptured(payload: unknown, eventPayload: string) {
       return;
     }
 
-    // Update order and payment in a transaction (atomic operation)
+    // Update order, payment, product inventory, and cart in a transaction (atomic operation)
     await prisma.$transaction([
       // Update order status to PAID
       prisma.order.update({
@@ -134,6 +134,18 @@ async function handlePaymentCaptured(payload: unknown, eventPayload: string) {
           removedAt: new Date(),
         },
       }),
+
+      // Decrement product inventory quantities
+      ...order.items.map((item) =>
+        prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        })
+      ),
     ]);
 
     console.log(`Payment captured successfully for order: ${order.id}`);

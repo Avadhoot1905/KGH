@@ -34,7 +34,7 @@ export type ProductListItem = {
   type: { id: string; name: string };
   caliber: { id: string; name: string };
   category: { id: string; name: string };
-  photos: { id: string; url: string; alt: string | null; isPrimary: boolean }[];
+  photos: { id: string; url: string; alt: string | null; isPrimary: boolean; position: number }[];
   relatedProducts?: { id: string; name: string }[];
 };
 
@@ -47,6 +47,8 @@ export type ProductFilters = {
   maxPrice?: number;
   search?: string;
   tag?: string;
+  lowStock?: boolean;
+  lowStockThreshold?: number;
   sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC";
 };
 
@@ -70,13 +72,14 @@ const baseInclude = {
   caliber: { select: { id: true, name: true } },
   category: { select: { id: true, name: true } },
   photos: { select: { id: true, url: true, alt: true, isPrimary: true } },
-  relatedProducts: { select: { id: true, name: true } },
 } as const;
 
-function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefined {
-  if (!filters) return undefined;
+function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput {
+  const where: Prisma.ProductWhereInput = {
+    removedAt: null,
+  };
 
-  const where: Prisma.ProductWhereInput = {};
+  if (!filters) return where;
 
   if (filters.brandIds && filters.brandIds.length > 0) {
     where.brandId = { in: filters.brandIds };
@@ -94,6 +97,12 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput | undefi
     where.price = {
       gte: typeof filters.minPrice === "number" ? filters.minPrice : undefined,
       lte: typeof filters.maxPrice === "number" ? filters.maxPrice : undefined,
+    };
+  }
+  // Low stock filter
+  if (filters.lowStock) {
+    where.quantity = {
+      lte: filters.lowStockThreshold ?? 5,
     };
   }
   if (filters.tag) {
@@ -287,8 +296,9 @@ export async function updateProductAction(
   const typeName = (formData.get("typeName") as string)?.trim() ?? undefined;
   const caliberName = (formData.get("caliberName") as string)?.trim() ?? undefined;
   const categoryName = (formData.get("categoryName") as string)?.trim() ?? undefined;
-  const photoFile = formData.get("photo") as unknown as File | null;
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
+  const photoMetaStr = formData.get("photoMeta") as string | null;
+  const newPhotoFiles = formData.getAll("photos") as unknown as File[];
 
   type UpdateData = {
     name?: string;
@@ -302,7 +312,6 @@ export async function updateProductAction(
     caliber?: { connect: { id: string } };
     category?: { connect: { id: string } };
     relatedProducts?: { set: Array<{ id: string }> };
-    photos?: { create: { url: string; alt?: string | null; isPrimary: boolean } };
   };
 
   const data: UpdateData = {};
@@ -355,39 +364,137 @@ export async function updateProductAction(
     };
   }
 
-  // If a new photo is uploaded, save it under public/uploads and create a primary photo
-  let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
-  if (photoFile && typeof photoFile === "object" && "arrayBuffer" in photoFile) {
-    const bytes = Buffer.from(await photoFile.arrayBuffer());
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
-    const safeName = `${Date.now()}_${(photoFile.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-    const filePath = path.join(uploadsDir, safeName);
-    await fs.writeFile(filePath, bytes);
-    const publicUrl = `/uploads/${safeName}`;
-    photoToCreate = { url: publicUrl, alt: data.name as string | undefined, isPrimary: true };
-  }
+  // Update the basic fields first
+  await prisma.product.update({ where: { id: productId }, data });
 
-  if (Object.keys(data).length === 0 && !photoToCreate) {
-    throw new Error("No valid fields to update");
-  }
+  // Handle photo updates using photoMeta if present
+  if (photoMetaStr) {
+    type PhotoMetaItem = {
+      id?: string;
+      tempIndex?: number;
+      isPrimary: boolean;
+      position: number;
+    };
+    let photoMeta: PhotoMetaItem[] = [];
+    try {
+      photoMeta = JSON.parse(photoMetaStr);
+    } catch (e) {
+      console.error("Failed to parse photoMeta", e);
+    }
 
-  if (photoToCreate) {
-    await prisma.product.update({
-      where: { id: productId },
-      data: {
-        ...data,
-        photos: {
-          updateMany: {
-            where: { isPrimary: true },
-            data: { isPrimary: false },
-          },
-          create: photoToCreate,
-        },
-      },
+    const currentDbPhotos = await prisma.photo.findMany({
+      where: { productId },
     });
+
+    // Delete photos not present in photoMeta
+    const remainingIds = photoMeta.map(p => p.id).filter(Boolean) as string[];
+    const deletedPhotos = currentDbPhotos.filter(dbP => !remainingIds.includes(dbP.id));
+    if (deletedPhotos.length > 0) {
+      await prisma.photo.deleteMany({
+        where: { id: { in: deletedPhotos.map(p => p.id) } },
+      });
+    }
+
+    // Process each photo item in photoMeta
+    for (const item of photoMeta) {
+      if (item.id) {
+        // Update existing photo
+        await prisma.photo.update({
+          where: { id: item.id },
+          data: {
+            isPrimary: item.isPrimary,
+            position: item.position,
+          },
+        });
+      } else if (typeof item.tempIndex === "number") {
+        // Upload new photo
+        const file = newPhotoFiles[item.tempIndex];
+        if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+          const bytes = Buffer.from(await file.arrayBuffer());
+          const uploadsDir = path.join(process.cwd(), "public", "uploads");
+          await fs.mkdir(uploadsDir, { recursive: true });
+          const safeName = `${Date.now()}_${item.tempIndex}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+          const filePath = path.join(uploadsDir, safeName);
+          await fs.writeFile(filePath, bytes);
+          const publicUrl = `/uploads/${safeName}`;
+
+          await prisma.photo.create({
+            data: {
+              url: publicUrl,
+              alt: name || "product image",
+              isPrimary: item.isPrimary,
+              position: item.position,
+              productId,
+            },
+          });
+        }
+      }
+    }
   } else {
-    await prisma.product.update({ where: { id: productId }, data });
+    // Fallback/Legacy photo upload logic
+    const existingPhotosStr = formData.get("existingPhotos") as string | null;
+    let existingPhotos: Array<{ id: string; url: string; isPrimary: boolean; position: number }> = [];
+    if (existingPhotosStr) {
+      try {
+        existingPhotos = JSON.parse(existingPhotosStr);
+      } catch (e) {
+        console.error("Failed to parse existingPhotos", e);
+      }
+    }
+
+    const currentDbPhotos = await prisma.photo.findMany({
+      where: { productId },
+    });
+
+    const remainingIds = existingPhotos.map(p => p.id).filter(Boolean);
+    const deletedPhotos = currentDbPhotos.filter(dbP => !remainingIds.includes(dbP.id));
+    
+    if (deletedPhotos.length > 0) {
+      await prisma.photo.deleteMany({
+        where: { id: { in: deletedPhotos.map(p => p.id) } },
+      });
+    }
+
+    for (const p of existingPhotos) {
+      if (p.id) {
+        await prisma.photo.update({
+          where: { id: p.id },
+          data: {
+            isPrimary: p.isPrimary,
+            position: p.position,
+          },
+        });
+      }
+    }
+
+    let nextPosition = existingPhotos.length;
+    let hasPrimary = existingPhotos.some(p => p.isPrimary);
+
+    for (let i = 0; i < newPhotoFiles.length; i++) {
+      const file = newPhotoFiles[i];
+      if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+        const bytes = Buffer.from(await file.arrayBuffer());
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        const safeName = `${Date.now()}_${i}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+        const filePath = path.join(uploadsDir, safeName);
+        await fs.writeFile(filePath, bytes);
+        const publicUrl = `/uploads/${safeName}`;
+
+        const isPrimary = !hasPrimary;
+        if (isPrimary) hasPrimary = true;
+
+        await prisma.photo.create({
+          data: {
+            url: publicUrl,
+            alt: name || "product image",
+            isPrimary,
+            position: nextPosition++,
+            productId,
+          },
+        });
+      }
+    }
   }
 
   // Revalidate the admin products page
@@ -406,11 +513,10 @@ export async function deleteProductAction(productId: string) {
     throw new Error("Forbidden");
   }
 
-  if (!productId) {
-    throw new Error("Invalid product id");
-  }
-
-  await prisma.product.delete({ where: { id: productId } });
+  await prisma.product.update({
+    where: { id: productId },
+    data: { removedAt: new Date() },
+  });
   revalidatePath("/mod");
 }
 
@@ -618,7 +724,7 @@ export async function createProductAction(formData: FormData) {
   const typeName = (formData.get("typeName") as string | null)?.trim() || "";
   const caliberName = (formData.get("caliberName") as string | null)?.trim() || "";
   const categoryName = (formData.get("categoryName") as string | null)?.trim() || "";
-  const photoFile = formData.get("photo") as unknown as File | null;
+  const photoFiles = formData.getAll("photos") as unknown as File[];
   const relatedProductIds = (formData.get("relatedProductIds") as string) ?? undefined;
 
   if (!name || !description || !priceStr || !quantityStr || !brandName || !typeName || !caliberName || !categoryName) {
@@ -666,7 +772,7 @@ export async function createProductAction(formData: FormData) {
     caliber: { connect: { id: string } };
     category: { connect: { id: string } };
     relatedProducts?: { connect: Array<{ id: string }> };
-    photos?: { create: { url: string; alt?: string | null; isPrimary: boolean } };
+    photos?: { create: Array<{ url: string; alt?: string | null; isPrimary: boolean; position: number }> };
   };
 
   const createData: CreateData = {
@@ -692,25 +798,67 @@ export async function createProductAction(formData: FormData) {
     }
   }
 
-  // Handle optional image upload
-  let photoToCreate: { url: string; alt?: string | null; isPrimary: boolean } | null = null;
-  if (photoFile && typeof photoFile === "object" && "arrayBuffer" in photoFile) {
-    const file = photoFile as File;
-    const bytes = Buffer.from(await file.arrayBuffer());
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadsDir, { recursive: true });
-    const safeName = `${Date.now()}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-    const filePath = path.join(uploadsDir, safeName);
-    await fs.writeFile(filePath, bytes);
-    const publicUrl = `/uploads/${safeName}`;
-    photoToCreate = { url: publicUrl, alt: name, isPrimary: true };
+  // Handle multiple image uploads with photoMeta if present
+  const photoMetaStr = formData.get("photoMeta") as string | null;
+  const photosToCreate: Array<{ url: string; alt?: string | null; isPrimary: boolean; position: number }> = [];
+  
+  if (photoMetaStr) {
+    type PhotoMetaItem = {
+      tempIndex: number;
+      isPrimary: boolean;
+      position: number;
+    };
+    let photoMeta: PhotoMetaItem[] = [];
+    try {
+      photoMeta = JSON.parse(photoMetaStr);
+    } catch (e) {
+      console.error("Failed to parse photoMeta in create action", e);
+    }
+
+    for (const item of photoMeta) {
+      const file = photoFiles[item.tempIndex];
+      if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+        const bytes = Buffer.from(await file.arrayBuffer());
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        const safeName = `${Date.now()}_${item.tempIndex}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+        const filePath = path.join(uploadsDir, safeName);
+        await fs.writeFile(filePath, bytes);
+        const publicUrl = `/uploads/${safeName}`;
+        photosToCreate.push({
+          url: publicUrl,
+          alt: `${name} ${item.position + 1}`,
+          isPrimary: item.isPrimary,
+          position: item.position,
+        });
+      }
+    }
+  } else {
+    for (let i = 0; i < photoFiles.length; i++) {
+      const file = photoFiles[i];
+      if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+        const bytes = Buffer.from(await file.arrayBuffer());
+        const uploadsDir = path.join(process.cwd(), "public", "uploads");
+        await fs.mkdir(uploadsDir, { recursive: true });
+        const safeName = `${Date.now()}_${i}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+        const filePath = path.join(uploadsDir, safeName);
+        await fs.writeFile(filePath, bytes);
+        const publicUrl = `/uploads/${safeName}`;
+        photosToCreate.push({
+          url: publicUrl,
+          alt: `${name} ${i + 1}`,
+          isPrimary: i === 0, // First one is primary by default
+          position: i,
+        });
+      }
+    }
   }
 
-  if (photoToCreate) {
+  if (photosToCreate.length > 0) {
     await prisma.product.create({
       data: {
         ...createData,
-        photos: { create: photoToCreate },
+        photos: { create: photosToCreate },
       },
     });
   } else {
@@ -719,3 +867,252 @@ export async function createProductAction(formData: FormData) {
 
   revalidatePath("/mod");
 }
+
+export async function addNewTypeAction(typeName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = typeName.trim();
+  if (!name) throw new Error("Type name cannot be empty");
+
+  const type = await prisma.type.upsert({
+    where: { name },
+    update: {},
+    create: { name },
+  });
+  return type.name;
+}
+
+export async function editTypeAction(oldName: string, newName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const oldN = oldName.trim();
+  const newN = newName.trim();
+  if (!newN) throw new Error("New type name cannot be empty");
+
+  await prisma.type.update({
+    where: { name: oldN },
+    data: { name: newN },
+  });
+  revalidatePath("/mod");
+}
+
+export async function deleteTypeAction(typeName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = typeName.trim();
+  const count = await prisma.product.count({
+    where: { type: { name } },
+  });
+  if (count > 0) {
+    throw new Error(`Cannot delete Type "${name}" because it is in use by ${count} products.`);
+  }
+
+  await prisma.type.delete({
+    where: { name },
+  });
+  revalidatePath("/mod");
+}
+
+export async function editTagAction(oldName: string, newName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const oldN = oldName.trim();
+  const newN = newName.trim().toUpperCase().replace(/\s+/g, "_");
+  if (!newN) throw new Error("New tag name cannot be empty");
+
+  await prisma.product.updateMany({
+    where: { tag: oldN },
+    data: { tag: newN },
+  });
+  revalidatePath("/mod");
+}
+
+export async function deleteTagAction(tagName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = tagName.trim();
+  await prisma.product.updateMany({
+    where: { tag: name },
+    data: { tag: null },
+  });
+  revalidatePath("/mod");
+}
+
+export async function addNewBrandAction(brandName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = brandName.trim();
+  if (!name) throw new Error("Brand name cannot be empty");
+
+  const brand = await prisma.brand.upsert({
+    where: { name },
+    update: {},
+    create: { name },
+  });
+  return brand.name;
+}
+
+export async function editBrandAction(oldName: string, newName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const oldN = oldName.trim();
+  const newN = newName.trim();
+  if (!newN) throw new Error("New brand name cannot be empty");
+
+  await prisma.brand.update({
+    where: { name: oldN },
+    data: { name: newN },
+  });
+  revalidatePath("/mod");
+}
+
+export async function deleteBrandAction(brandName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = brandName.trim();
+  const count = await prisma.product.count({
+    where: { brand: { name } },
+  });
+  if (count > 0) {
+    throw new Error(`Cannot delete Brand "${name}" because it is in use by ${count} products.`);
+  }
+
+  await prisma.brand.delete({
+    where: { name },
+  });
+  revalidatePath("/mod");
+}
+
+export async function addNewCaliberAction(caliberName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = caliberName.trim();
+  if (!name) throw new Error("Caliber name cannot be empty");
+
+  const caliber = await prisma.caliber.upsert({
+    where: { name },
+    update: {},
+    create: { name },
+  });
+  return caliber.name;
+}
+
+export async function editCaliberAction(oldName: string, newName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const oldN = oldName.trim();
+  const newN = newName.trim();
+  if (!newN) throw new Error("New caliber name cannot be empty");
+
+  await prisma.caliber.update({
+    where: { name: oldN },
+    data: { name: newN },
+  });
+  revalidatePath("/mod");
+}
+
+export async function deleteCaliberAction(caliberName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = caliberName.trim();
+  const count = await prisma.product.count({
+    where: { caliber: { name } },
+  });
+  if (count > 0) {
+    throw new Error(`Cannot delete Caliber "${name}" because it is in use by ${count} products.`);
+  }
+
+  await prisma.caliber.delete({
+    where: { name },
+  });
+  revalidatePath("/mod");
+}
+
+export async function addNewCategoryAction(categoryName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = categoryName.trim();
+  if (!name) throw new Error("Category name cannot be empty");
+
+  const category = await prisma.category.upsert({
+    where: { name },
+    update: {},
+    create: { name },
+  });
+  return category.name;
+}
+
+export async function editCategoryAction(oldName: string, newName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const oldN = oldName.trim();
+  const newN = newName.trim();
+  if (!newN) throw new Error("New category name cannot be empty");
+
+  await prisma.category.update({
+    where: { name: oldN },
+    data: { name: newN },
+  });
+  revalidatePath("/mod");
+}
+
+export async function deleteCategoryAction(categoryName: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const name = categoryName.trim();
+  const count = await prisma.product.count({
+    where: { category: { name } },
+  });
+  if (count > 0) {
+    throw new Error(`Cannot delete Category "${name}" because it is in use by ${count} products.`);
+  }
+
+  await prisma.category.delete({
+    where: { name },
+  });
+  revalidatePath("/mod");
+}
+
+

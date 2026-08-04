@@ -20,6 +20,7 @@ if (typeof window === 'undefined') {
 
 
 import { getProducts } from '@/actions/products';
+import { getHomeTestimonials } from '@/actions/feedbackAndReturns';
 import type { PrismaClient } from '@prisma/client';
 
 export const dynamic = 'force-dynamic';
@@ -30,6 +31,14 @@ declare global {
 
 export default async function Home() {
   let featuredProducts = { items: [] as Array<{ id: string; name: string; price: number; photos: Array<{ isPrimary?: boolean; url: string }> }> };
+  let testimonials: Array<{ id: string; content: string; userName: string }> = [];
+
+  try {
+    // Fetch active testimonials
+    testimonials = await getHomeTestimonials();
+  } catch (error) {
+    console.error('Failed to load testimonials:', error instanceof Error ? error.message : String(error));
+  }
 
   try {
     // Fetch all categories to find "Air Guns" category ID
@@ -77,7 +86,7 @@ export default async function Home() {
       <Navbar />
 
       {/* HERO SECTION */}
-      <section className="relative w-full overflow-hidden flex flex-col lg:flex-row items-center justify-between px-6 lg:px-16 py-16 min-h-[420px]">
+      <section className="relative w-full overflow-hidden flex flex-col lg:flex-row items-center lg:items-start justify-between px-6 md:px-12 lg:px-16 py-16 min-h-[420px] text-center lg:text-left">
         {/* Full-width background banner (place your hero at /public/photos/hero.jpg) */}
         <Image
           src="/photos/hero.png"
@@ -93,7 +102,7 @@ export default async function Home() {
 
         {/* Content sits above the banner like a profile box */}
         <div className="relative z-20 max-w-xl w-full lg:w-1/2 mx-auto lg:mx-0">
-          <h1 className="text-4xl lg:text-5xl font-bold leading-tight">
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight">
             <span>PRECISION.</span><br />
             <span className="text-red-500">POWER.</span><br />
             LEGACY.
@@ -131,14 +140,14 @@ export default async function Home() {
         </h2>
 
         {/* 🔥 GRID FIX HERE */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
           {categories.map((cat, i) => {
             const Icon = cat.icon;
             return (
               <Link
                 key={i}
                 href={`/Shop?category=${encodeURIComponent(cat.name)}`}
-                className="w-full max-w-[180px] h-44 md:h-auto"
+                className="w-full max-w-[260px] h-44 md:h-auto"
               >
                 <div className="bg-[#1a1a1a] p-6 rounded-xl shadow-md hover:shadow-red-500/40 transition transform hover:-translate-y-1 flex flex-col items-center justify-between h-full">
                   <div className="flex justify-center mb-4">
@@ -153,33 +162,73 @@ export default async function Home() {
         </div>
       </section>
 
-      <section className="products">
-        <h2>FEATURED PRODUCTS</h2>
-        <div className="product-grid">
+      {/* FEATURED PRODUCTS */}
+      <section className="px-6 lg:px-16 py-14 text-center">
+        <h2 className="text-2xl font-semibold mb-8 tracking-wide">
+          FEATURED PRODUCTS
+        </h2>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 justify-items-center">
           {featuredProducts.items.length > 0 ? (
             featuredProducts.items.map((product) => (
-              <Link key={product.id} href={`/ProductDetail/${product.id}`}>
-                <div className="product-card h-64 md:h-auto flex flex-col justify-between">
+              <Link
+                key={product.id}
+                href={`/ProductDetail/${product.id}`}
+                className="w-full max-w-[280px]"
+              >
+                <div className="bg-[#1a1a1a] p-4 rounded-xl shadow-md hover:shadow-red-500/40 transition transform hover:-translate-y-1 flex flex-col justify-between h-full border border-white/5">
                   {product.photos.length > 0 ? (
-                    <div style={{ position: 'relative', width: '100%', height: '200px', marginBottom: '10px' }}>
+                    <div className="relative w-full h-48 mb-4 bg-black/20 rounded-lg overflow-hidden flex items-center justify-center">
                       <Image 
                         src={product.photos.find(p => p.isPrimary)?.url || product.photos[0].url}
                         alt={product.name}
                         fill
-                        style={{ objectFit: 'cover' }}
+                        className="object-contain p-2 transition-transform duration-300 hover:scale-105"
                       />
                     </div>
-                  ) : null}
-                  <h3 className="truncate">{product.name}</h3>
-                  <p>₹{product.price.toLocaleString()}</p>
+                  ) : (
+                    <div className="w-full h-48 bg-black/20 rounded-lg mb-4 flex items-center justify-center text-gray-600">
+                      No Image
+                    </div>
+                  )}
+                  <div className="text-left flex-grow flex flex-col justify-between">
+                    <h3 className="font-semibold text-base tracking-wide truncate text-white mb-2" title={product.name}>
+                      {product.name}
+                    </h3>
+                    <p className="text-red-500 font-bold text-lg mt-auto">
+                      ₹{product.price.toLocaleString("en-IN")}
+                    </p>
+                  </div>
                 </div>
               </Link>
             ))
           ) : (
-            <p style={{ color: '#888' }}>No featured products available.</p>
+            <p className="text-gray-500 col-span-full">No featured products available.</p>
           )}
         </div>
       </section>
+
+      {/* TESTIMONIALS SECTION */}
+      {testimonials.length > 0 && (
+        <section className="px-6 lg:px-16 py-16 bg-[#121212] border-t border-white/5 text-center">
+          <h2 className="text-2xl font-semibold mb-10 tracking-wide">
+            TESTIMONIALS
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-6xl mx-auto justify-items-center">
+            {testimonials.map((t) => (
+              <div key={t.id} className="bg-[#1a1a1a] p-6 rounded-xl border border-white/5 shadow-md flex flex-col justify-between max-w-md w-full relative">
+                {/* Quotation mark decoration */}
+                <div className="absolute top-4 left-4 text-6xl text-white/5 font-serif select-none pointer-events-none">“</div>
+                <p className="text-gray-300 italic text-sm leading-relaxed mb-6 pt-4 relative z-10 text-left">
+                  &ldquo;{t.content}&rdquo;
+                </p>
+                <div className="text-right">
+                  <span className="text-red-500 font-semibold text-xs tracking-wider uppercase">— {t.userName}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       <Footer />
     </div>
