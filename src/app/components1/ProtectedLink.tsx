@@ -1,10 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import AuthPopup from "./AuthPopup";
-import { getGoogleSignInUrl } from "@/actions/auth";
 
 type ProtectedLinkProps = {
   href: string;
@@ -27,13 +26,6 @@ export default function ProtectedLink({
 }: ProtectedLinkProps) {
   const { data: session, status } = useSession();
   const [showAuthPopup, setShowAuthPopup] = useState(false);
-  const [googleSignInUrl, setGoogleSignInUrl] = useState("");
-
-  useEffect(() => {
-    if (showAuthPopup) {
-      getGoogleSignInUrl(href).then(setGoogleSignInUrl);
-    }
-  }, [showAuthPopup, href]);
 
   const handleClick = (e: React.MouseEvent) => {
     if (requireAuth && status !== "loading" && !session?.user) {
@@ -56,7 +48,7 @@ export default function ProtectedLink({
       <AuthPopup
         isOpen={showAuthPopup}
         onClose={() => setShowAuthPopup(false)}
-        googleSignInUrl={googleSignInUrl}
+        callbackUrl={href}
         title={authTitle || "Sign in required"}
         message={authMessage || `Please sign in to access ${title || "this page"}.`}
       />

@@ -5,7 +5,6 @@ import { createPortal } from "react-dom";
 import { useSession } from "next-auth/react";
 import ProfileForm, { type ProfileFormValues } from "@/components/ProfileForm";
 import { getCurrentUserCheckoutDetails, saveCheckoutProfile } from "@/actions/profile";
-import OtpVerificationModal from "@/components/OtpVerificationModal";
 
 export type ProfileCompletionModalProps = {
   open: boolean;
@@ -20,10 +19,6 @@ export default function ProfileCompletionModal({ open, onClose, onSaved, mode }:
   const [initialValues, setInitialValues] = useState<ProfileFormValues | undefined>(undefined);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  // OTP States
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [pendingValues, setPendingValues] = useState<ProfileFormValues | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -65,28 +60,20 @@ export default function ProfileCompletionModal({ open, onClose, onSaved, mode }:
     };
   }, [open]);
 
-  const handleSubmit = (values: ProfileFormValues) => {
-    // Intercept to verify OTP first
-    setPendingValues(values);
-    setShowOtpModal(true);
-  };
-
-  const executeSaveProfile = async () => {
-    if (!pendingValues) return;
-    setShowOtpModal(false);
+  const handleSubmit = async (values: ProfileFormValues) => {
     setSubmitting(true);
     setError(null);
 
     try {
       const result = await saveCheckoutProfile({
-        fullName: pendingValues.fullName,
-        phoneNumber: pendingValues.phoneNumber,
-        addressLine1: pendingValues.addressLine1,
-        addressLine2: pendingValues.addressLine2,
-        city: pendingValues.city,
-        state: pendingValues.state,
-        country: pendingValues.country,
-        pincode: pendingValues.postalCode,
+        fullName: values.fullName,
+        phoneNumber: values.phoneNumber,
+        addressLine1: values.addressLine1,
+        addressLine2: values.addressLine2,
+        city: values.city,
+        state: values.state,
+        country: values.country,
+        pincode: values.postalCode,
       });
 
       if (!result.success) {
@@ -136,14 +123,6 @@ export default function ProfileCompletionModal({ open, onClose, onSaved, mode }:
           </div>
         </div>
       </div>
-
-      <OtpVerificationModal
-        isOpen={showOtpModal}
-        onClose={() => setShowOtpModal(false)}
-        email={session?.user?.email || ""}
-        phoneNumber={pendingValues?.phoneNumber || ""}
-        onVerifySuccess={executeSaveProfile}
-      />
     </>
   );
 
