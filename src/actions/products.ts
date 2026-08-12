@@ -1,20 +1,68 @@
 "use server";
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { isAdmin } from "@/lib/adminAuth";
+import { prisma } from "@/lib/prisma";
+import fs from "fs/promises";
+import path from "path";
 
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+
+// S3 Upload Helper (Optional during development, active if S3 credentials are set)
+let s3Client: S3Client | null = null;
+if (
+  process.env.AWS_ACCESS_KEY_ID &&
+  process.env.AWS_SECRET_ACCESS_KEY &&
+  process.env.AWS_REGION &&
+  process.env.AWS_BUCKET_NAME
+) {
+  try {
+    s3Client = new S3Client({
+      region: process.env.AWS_REGION,
+      credentials: {
+        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
+        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+      },
+    });
+  } catch (err) {
+    console.error("AWS SDK S3 Client could not be initialized:", err);
+  }
 }
 
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
+async function uploadImage(file: File, tempIndexOrId: number | string): Promise<string> {
+  const bytes = Buffer.from(await file.arrayBuffer());
+  const safeName = `${Date.now()}_${tempIndexOrId}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+
+  if (s3Client && process.env.AWS_BUCKET_NAME) {
+    try {
+      const bucketName = process.env.AWS_BUCKET_NAME;
+      const key = `uploads/${safeName}`;
+
+      await s3Client.send(
+        new PutObjectCommand({
+          Bucket: bucketName,
+          Key: key,
+          Body: bytes,
+          ContentType: file.type || "image/jpeg",
+        })
+      );
+
+      // Return S3 URL (use custom domain/CDN if set, otherwise default S3 endpoint URL)
+      if (process.env.AWS_CDN_URL) {
+        return `${process.env.AWS_CDN_URL.replace(/\/$/, "")}/${key}`;
+      }
+      return `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+    } catch (s3Err) {
+      console.error("S3 upload failed, falling back to local storage:", s3Err);
+    }
   }
-  prisma = global.__PRISMA__;
+
+  // Fallback: Local Server Storage
+  const uploadsDir = path.join(process.cwd(), "public", "uploads");
+  await fs.mkdir(uploadsDir, { recursive: true });
+  const filePath = path.join(uploadsDir, safeName);
+  await fs.writeFile(filePath, bytes);
+  return `/uploads/${safeName}`;
 }
 
 export type ProductListItem = {
@@ -30,10 +78,10 @@ export type ProductListItem = {
   totalReviews?: number | null;
   createdAt: Date;
   updatedAt: Date;
-  brand: { id: string; name: string };
-  type: { id: string; name: string };
-  caliber: { id: string; name: string };
-  category: { id: string; name: string };
+  brands: { id: string; name: string }[];
+  types: { id: string; name: string }[];
+  calibers: { id: string; name: string }[];
+  categories: { id: string; name: string }[];
   photos: { id: string; url: string; alt: string | null; isPrimary: boolean; position: number }[];
   relatedProducts?: { id: string; name: string }[];
 };
@@ -49,7 +97,7 @@ export type ProductFilters = {
   tag?: string;
   lowStock?: boolean;
   lowStockThreshold?: number;
-  sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC";
+  sort?: "PRICE_ASC" | "PRICE_DESC" | "NEWEST" | "RATING_DESC" | "NAME_ASC" | "NAME_DESC" | "OLDEST" | "POPULARITY";
 };
 
 export type ProductQuery = {
@@ -67,10 +115,10 @@ export type PaginatedProducts = {
 };
 
 const baseInclude = {
-  brand: { select: { id: true, name: true } },
-  type: { select: { id: true, name: true } },
-  caliber: { select: { id: true, name: true } },
-  category: { select: { id: true, name: true } },
+  brands: { select: { id: true, name: true } },
+  types: { select: { id: true, name: true } },
+  calibers: { select: { id: true, name: true } },
+  categories: { select: { id: true, name: true } },
   photos: { select: { id: true, url: true, alt: true, isPrimary: true } },
 } as const;
 
@@ -82,22 +130,27 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput {
   if (!filters) return where;
 
   if (filters.brandIds && filters.brandIds.length > 0) {
-    where.brandId = { in: filters.brandIds };
+    where.brands = { some: { id: { in: filters.brandIds } } };
   }
   if (filters.typeIds && filters.typeIds.length > 0) {
-    where.typeId = { in: filters.typeIds };
+    where.types = { some: { id: { in: filters.typeIds } } };
   }
   if (filters.caliberIds && filters.caliberIds.length > 0) {
-    where.caliberId = { in: filters.caliberIds };
+    where.calibers = { some: { id: { in: filters.caliberIds } } };
   }
   if (filters.categoryIds && filters.categoryIds.length > 0) {
-    where.categoryId = { in: filters.categoryIds };
+    where.categories = { some: { id: { in: filters.categoryIds } } };
   }
   if (typeof filters.minPrice === "number" || typeof filters.maxPrice === "number") {
-    where.price = {
-      gte: typeof filters.minPrice === "number" ? filters.minPrice : undefined,
-      lte: typeof filters.maxPrice === "number" ? filters.maxPrice : undefined,
-    };
+    where.AND = [
+      ...(where.AND ? (Array.isArray(where.AND) ? where.AND : [where.AND]) : []),
+      {
+        price: {
+          gte: typeof filters.minPrice === "number" ? filters.minPrice : undefined,
+          lte: typeof filters.maxPrice === "number" ? filters.maxPrice : undefined,
+        }
+      }
+    ];
   }
   // Low stock filter
   if (filters.lowStock) {
@@ -113,10 +166,10 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput {
     where.OR = [
       { name: { contains: q, mode: "insensitive" } },
       { description: { contains: q, mode: "insensitive" } },
-      { brand: { name: { contains: q, mode: "insensitive" } } },
-      { type: { name: { contains: q, mode: "insensitive" } } },
-      { caliber: { name: { contains: q, mode: "insensitive" } } },
-      { category: { name: { contains: q, mode: "insensitive" } } },
+      { brands: { some: { name: { contains: q, mode: "insensitive" } } } },
+      { types: { some: { name: { contains: q, mode: "insensitive" } } } },
+      { calibers: { some: { name: { contains: q, mode: "insensitive" } } } },
+      { categories: { some: { name: { contains: q, mode: "insensitive" } } } },
     ];
   }
 
@@ -134,6 +187,14 @@ function buildOrder(filters?: ProductFilters): Prisma.ProductOrderByWithRelation
       return { createdAt: "desc" };
     case "RATING_DESC":
       return { averageRating: "desc" };
+    case "NAME_ASC":
+      return { name: "asc" };
+    case "NAME_DESC":
+      return { name: "desc" };
+    case "OLDEST":
+      return { createdAt: "asc" };
+    case "POPULARITY":
+      return { totalReviews: "desc" };
     default:
       return undefined;
   }
@@ -245,23 +306,23 @@ export async function getSearchIndex() {
       name: true,
       description: true,
       price: true,
-      brand: { select: { name: true } },
-      type: { select: { name: true } },
-      category: { select: { name: true } },
+      brands: { select: { name: true } },
+      types: { select: { name: true } },
+      categories: { select: { name: true } },
       photos: { select: { url: true, isPrimary: true } },
     },
     orderBy: { createdAt: "desc" },
     take: 500,
   });
-  return products.map((p: { id: string; name: string; description: string; price: number; brand: { name: string } | null; type: { name: string } | null; category: { name: string } | null; photos: { url: string; isPrimary: boolean }[] }) => ({
+  return products.map((p) => ({
     id: p.id,
     name: p.name,
     description: p.description,
     price: p.price,
-    brandName: p.brand?.name ?? null,
-    typeName: p.type?.name ?? null,
-    categoryName: p.category?.name ?? null,
-    photoUrl: (p.photos.find((ph: { url: string; isPrimary: boolean }) => ph.isPrimary) ?? p.photos[0])?.url ?? null,
+    brandName: p.brands.map(b => b.name).join(", ") || null,
+    typeName: p.types.map(t => t.name).join(", ") || null,
+    categoryName: p.categories.map(c => c.name).join(", ") || null,
+    photoUrl: (p.photos.find(ph => ph.isPrimary) ?? p.photos[0])?.url ?? null,
   }));
 }
 
@@ -269,8 +330,6 @@ export async function getSearchIndex() {
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { revalidatePath } from "next/cache";
-import fs from "fs/promises";
-import path from "path";
 
 export async function updateProductAction(
   productId: string,
@@ -410,13 +469,7 @@ export async function updateProductAction(
         // Upload new photo
         const file = newPhotoFiles[item.tempIndex];
         if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-          const bytes = Buffer.from(await file.arrayBuffer());
-          const uploadsDir = path.join(process.cwd(), "public", "uploads");
-          await fs.mkdir(uploadsDir, { recursive: true });
-          const safeName = `${Date.now()}_${item.tempIndex}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-          const filePath = path.join(uploadsDir, safeName);
-          await fs.writeFile(filePath, bytes);
-          const publicUrl = `/uploads/${safeName}`;
+          const publicUrl = await uploadImage(file, item.tempIndex);
 
           await prisma.photo.create({
             data: {
@@ -473,13 +526,7 @@ export async function updateProductAction(
     for (let i = 0; i < newPhotoFiles.length; i++) {
       const file = newPhotoFiles[i];
       if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-        const bytes = Buffer.from(await file.arrayBuffer());
-        const uploadsDir = path.join(process.cwd(), "public", "uploads");
-        await fs.mkdir(uploadsDir, { recursive: true });
-        const safeName = `${Date.now()}_${i}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-        const filePath = path.join(uploadsDir, safeName);
-        await fs.writeFile(filePath, bytes);
-        const publicUrl = `/uploads/${safeName}`;
+        const publicUrl = await uploadImage(file, i);
 
         const isPrimary = !hasPrimary;
         if (isPrimary) hasPrimary = true;
@@ -675,7 +722,7 @@ export async function getAllTagsForSelector() {
 
 // Add a new tag (admin-only) - Note: This is more of a validation function
 // since tags are stored directly on products
-export async function addNewTagAction(tagName: string) {
+export async function addNewTagAction(tagName: string, bypassDuplicate: boolean = false) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
     throw new Error("Unauthorized");
@@ -697,8 +744,28 @@ export async function addNewTagAction(tagName: string) {
     throw new Error("Tag can only contain letters, numbers, and underscores");
   }
 
-  // Return the normalized tag name to confirm it's valid
-  // The actual tag will be saved when the product is created/updated
+  if (!bypassDuplicate) {
+    // Check if a tag with the same spelling exists (case-insensitive duplicate check)
+    const existingTagsResult = await prisma.product.findMany({
+      where: {
+        tag: { not: null }
+      },
+      select: { tag: true },
+      distinct: ["tag"]
+    });
+
+    const matchingTag = existingTagsResult.find(p => p.tag?.toLowerCase() === normalizedTag.toLowerCase() || p.tag?.toLowerCase() === tagName.trim().toLowerCase());
+    if (matchingTag && matchingTag.tag) {
+      throw new Error(`Tag "${matchingTag.tag}" already exists.`);
+    }
+
+    // Also verify against defaults
+    const defaults = ["NEW", "TOP_SELLER"];
+    if (defaults.some(d => d.toLowerCase() === normalizedTag.toLowerCase())) {
+      throw new Error(`Tag "${normalizedTag}" already exists as a default option.`);
+    }
+  }
+
   return normalizedTag;
 }
 
@@ -818,13 +885,7 @@ export async function createProductAction(formData: FormData) {
     for (const item of photoMeta) {
       const file = photoFiles[item.tempIndex];
       if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-        const bytes = Buffer.from(await file.arrayBuffer());
-        const uploadsDir = path.join(process.cwd(), "public", "uploads");
-        await fs.mkdir(uploadsDir, { recursive: true });
-        const safeName = `${Date.now()}_${item.tempIndex}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-        const filePath = path.join(uploadsDir, safeName);
-        await fs.writeFile(filePath, bytes);
-        const publicUrl = `/uploads/${safeName}`;
+        const publicUrl = await uploadImage(file, item.tempIndex);
         photosToCreate.push({
           url: publicUrl,
           alt: `${name} ${item.position + 1}`,
@@ -837,13 +898,7 @@ export async function createProductAction(formData: FormData) {
     for (let i = 0; i < photoFiles.length; i++) {
       const file = photoFiles[i];
       if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-        const bytes = Buffer.from(await file.arrayBuffer());
-        const uploadsDir = path.join(process.cwd(), "public", "uploads");
-        await fs.mkdir(uploadsDir, { recursive: true });
-        const safeName = `${Date.now()}_${i}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
-        const filePath = path.join(uploadsDir, safeName);
-        await fs.writeFile(filePath, bytes);
-        const publicUrl = `/uploads/${safeName}`;
+        const publicUrl = await uploadImage(file, i);
         photosToCreate.push({
           url: publicUrl,
           alt: `${name} ${i + 1}`,
@@ -909,13 +964,6 @@ export async function deleteTypeAction(typeName: string) {
   if (!userIsAdmin) throw new Error("Forbidden");
 
   const name = typeName.trim();
-  const count = await prisma.product.count({
-    where: { type: { name } },
-  });
-  if (count > 0) {
-    throw new Error(`Cannot delete Type "${name}" because it is in use by ${count} products.`);
-  }
-
   await prisma.type.delete({
     where: { name },
   });
@@ -994,13 +1042,6 @@ export async function deleteBrandAction(brandName: string) {
   if (!userIsAdmin) throw new Error("Forbidden");
 
   const name = brandName.trim();
-  const count = await prisma.product.count({
-    where: { brand: { name } },
-  });
-  if (count > 0) {
-    throw new Error(`Cannot delete Brand "${name}" because it is in use by ${count} products.`);
-  }
-
   await prisma.brand.delete({
     where: { name },
   });
@@ -1048,13 +1089,6 @@ export async function deleteCaliberAction(caliberName: string) {
   if (!userIsAdmin) throw new Error("Forbidden");
 
   const name = caliberName.trim();
-  const count = await prisma.product.count({
-    where: { caliber: { name } },
-  });
-  if (count > 0) {
-    throw new Error(`Cannot delete Caliber "${name}" because it is in use by ${count} products.`);
-  }
-
   await prisma.caliber.delete({
     where: { name },
   });
@@ -1102,13 +1136,6 @@ export async function deleteCategoryAction(categoryName: string) {
   if (!userIsAdmin) throw new Error("Forbidden");
 
   const name = categoryName.trim();
-  const count = await prisma.product.count({
-    where: { category: { name } },
-  });
-  if (count > 0) {
-    throw new Error(`Cannot delete Category "${name}" because it is in use by ${count} products.`);
-  }
-
   await prisma.category.delete({
     where: { name },
   });

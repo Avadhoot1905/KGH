@@ -45,6 +45,14 @@ export async function POST() {
       );
     }
 
+    const country = (user.country || '').trim().toLowerCase();
+    if (country && !['india', 'in'].includes(country)) {
+      return NextResponse.json(
+        { error: 'We only deliver to India. International orders are not accepted.' },
+        { status: 400 }
+      );
+    }
+
     const userId = user.id;
 
     // Fetch cart items from database (server-side calculation)

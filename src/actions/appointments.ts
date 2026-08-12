@@ -9,25 +9,11 @@
  * After migration, all errors will resolve automatically.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { isAdmin } from "@/lib/adminAuth";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { revalidatePath } from "next/cache";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
 
 // Define AppointmentStatus type until Prisma generates it
 export type AppointmentStatus = "PENDING" | "APPROVED" | "DECLINED";

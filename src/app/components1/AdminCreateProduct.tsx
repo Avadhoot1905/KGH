@@ -439,6 +439,7 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
               onEdit={handleEditTag}
               onDelete={handleDeleteTag}
               textTransform="uppercase"
+              multiSelect={true}
             />
             <ManageableAutocompleteInput
               name="brandName"

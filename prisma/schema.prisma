@@ -63,6 +63,25 @@ model User {
   reviews          Review[]
   viewedProducts   Product[]     @relation("ViewedBy")
   feedbacks        Feedback[]
+  addresses        Address[]
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  fullName     String
+  phoneNumber  String
+  addressLine1 String
+  addressLine2 String?
+  landmark     String?
+  city         String
+  state        String
+  country      String   @default("India")
+  pincode      String
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model VerificationToken {
@@ -83,24 +102,20 @@ model Product {
   tag             String?
   addedAt         DateTime? @default(now())
   removedAt       DateTime?
-  categoryId      String
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
   averageRating   Float?    @default(0)
-  brandId         String
-  caliberId       String
   totalRating     Int       @default(0)
   totalReviews    Int       @default(0)
-  typeId          String
+
+  brands     Brand[]
+  calibers   Caliber[]
+  categories Category[]
+  types      Type[]
 
   cartItems  Cart[]
   orderItems OrderItem[]
   photos     Photo[]
-
-  brand    Brand    @relation(fields: [brandId], references: [id])
-  caliber  Caliber  @relation(fields: [caliberId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-  type     Type     @relation(fields: [typeId], references: [id])
 
   wishlistItems Wishlist[]
   reviews       Review[]

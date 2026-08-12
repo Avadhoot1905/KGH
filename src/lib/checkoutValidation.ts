@@ -45,6 +45,11 @@ export function validateCheckoutDetails(values: CheckoutFormValues) {
     errors.push("Please enter a valid pincode.");
   }
 
+  const country = values.country.trim().toLowerCase();
+  if (country && !["india", "in"].includes(country)) {
+    errors.push("We only deliver to India. International orders are not accepted.");
+  }
+
   return errors;
 }
 

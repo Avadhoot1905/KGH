@@ -4,6 +4,7 @@ import { authOptions } from "@/auth";
 import { getServerSession } from "next-auth";
 import bcrypt from "bcryptjs";
 import { headers } from "next/headers";
+import { prisma } from "@/lib/prisma";
 
 export async function getAuthState() {
   const session = await getServerSession(authOptions);
@@ -37,18 +38,6 @@ export async function getCurrentUser(): Promise<CurrentUser | null> {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
   if (!email) return null;
-
-  // Lazy import PrismaClient pattern is used in other actions; keep this file light
-  const { PrismaClient } = await import("@prisma/client");
-  // Reuse global prisma as in other actions to avoid multiple instances in dev
-  const globalAny = global as { __PRISMA__?: InstanceType<typeof PrismaClient> };
-  let prisma = globalAny.__PRISMA__ as InstanceType<typeof PrismaClient> | undefined;
-  if (!prisma) {
-    prisma = new PrismaClient();
-    if (process.env.NODE_ENV !== "production") {
-      globalAny.__PRISMA__ = prisma;
-    }
-  }
 
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return null;
@@ -85,15 +74,7 @@ export async function getGoogleSignInUrl(callbackPath?: string) {
 }
 
 export async function registerCredentialsUser(data: { name: string; email: string; phoneNumber: string; password: string }) {
-  const { PrismaClient } = await import("@prisma/client");
-  const globalAny = global as { __PRISMA__?: InstanceType<typeof PrismaClient> };
-  let prisma = globalAny.__PRISMA__ as InstanceType<typeof PrismaClient> | undefined;
-  if (!prisma) {
-    prisma = new PrismaClient();
-    if (process.env.NODE_ENV !== "production") {
-      globalAny.__PRISMA__ = prisma;
-    }
-  }
+    // Use the shared prisma client
 
   const existingUser = await prisma.user.findUnique({
     where: { email: data.email },

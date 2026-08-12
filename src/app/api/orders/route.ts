@@ -36,6 +36,11 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing payment details' }, { status: 400 });
     }
 
+    const checkCountry = (country ?? user.country ?? '').trim().toLowerCase();
+    if (checkCountry && !['india', 'in'].includes(checkCountry)) {
+      return NextResponse.json({ error: 'We only deliver to India. International orders are not accepted.' }, { status: 400 });
+    }
+
     const existing = await prisma.order.findFirst({
       where: { razorpayOrderId, userId: user.id },
       include: { payment: true },

@@ -5,6 +5,7 @@ import Footer from "../components1/Footer";
 import AddToCartButton from "../components1/AddToCartButton";
 import WishlistButton from "../components1/WishlistButton";
 import ShareButton from "../components1/ShareButton";
+import ProductGallery from "../components1/ProductGallery";
 import { getProductById, getRelatedProductsWithDetails } from "@/actions/products";
 import Link from "next/link";
 import Image from "next/image";
@@ -36,7 +37,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     );
   }
 
-  const primaryPhoto = product.photos.find((p) => p.isPrimary) ?? product.photos[0];
   const relatedProducts = await getRelatedProductsWithDetails(id);
 
   return (
@@ -45,23 +45,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <div className="product-detail-page">
         <div className="breadcrumb">
-          <a href="#">Home</a> &gt; <a href="#">{product.category.name}</a> &gt; {product.name}
+          <a href="#">Home</a> &gt; <a href="#">{product.categories.map(c => c.name).join(", ")}</a> &gt; {product.name}
         </div>
 
         <div className="product-main">
           {/* Product Gallery */}
           <div className="product-gallery">
-            {primaryPhoto ? (
-              <div style={{ position: 'relative', width: '100%', height: '500px' }}>
-                <Image className="main-image" src={primaryPhoto.url} alt={primaryPhoto.alt ?? product.name} fill style={{ objectFit: 'contain' }} />
-              </div>
-            ) : null}
+            <ProductGallery photos={product.photos} productName={product.name} />
           </div>
 
           {/* Product Info */}
           <div className="product-info">
             <div className="tags">
-              <span className="tag green">{product.type.name}</span>
+              {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
+                <span key={idx} className="tag red">{t}</span>
+              ))}
+              <span className="tag green">{product.types.map(t => t.name).join(", ")}</span>
               <span className="tag red">{product.quantity > 0 ? "In Stock" : "Out of Stock"}</span>
             </div>
             <h1 className="product-title">{product.name}</h1>
@@ -71,22 +70,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             <div className="spec-box">
               <h3>SPECIFICATIONS</h3>
               <ul>
-                <li><strong>Caliber:</strong> {product.caliber.name}</li>
-                <li><strong>Brand:</strong> {product.brand.name}</li>
-                <li><strong>Type:</strong> {product.type.name}</li>
+                <li><strong>Caliber:</strong> {product.calibers.map(c => c.name).join(", ")}</li>
+                <li><strong>Brand:</strong> {product.brands.map(b => b.name).join(", ")}</li>
+                <li><strong>Type:</strong> {product.types.map(t => t.name).join(", ")}</li>
                 <li><strong>License Required:</strong> {product.licenseRequired ? "Yes" : "No"}</li>
               </ul>
             </div>
 
             <div className="description">
               <h3>DESCRIPTION</h3>
-              <p>{product.description}</p>
+              <p style={{ whiteSpace: "pre-wrap" }}>{product.description}</p>
             </div>
 
             <div className="buttons">
               <AddToCartButton productId={product.id} licenseRequired={product.licenseRequired} />
               <WishlistButton productId={product.id} />
-              <ShareButton title={product.name} url={`https://example.com/product/${product.id}`} />
+              <ShareButton title={product.name} url={`https://buyairgunsindia.in/ProductDetail/${product.id}`} />
             </div>
 
             <div className="warning-box">
@@ -117,7 +116,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
                         <div style={{ width: '100%', height: '150px', background: '#333', borderRadius: '8px' }} />
                       )}
                       <h4>{relatedProduct.name}</h4>
-                      <p>{relatedProduct.brand.name} • {relatedProduct.type.name}</p>
+                      <p>{relatedProduct.brands.map(b => b.name).join(", ")} • {relatedProduct.types.map(t => t.name).join(", ")}</p>
                       <p className="price">{formatINR(relatedProduct.price)}</p>
                     </div>
                   </Link>

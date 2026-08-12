@@ -147,10 +147,18 @@ async function createProducts(products: SeedProductInput[]) {
           quantity: p.quantity,
           licenseRequired: p.licenseRequired,
           tag: p.tag,
-          categoryId: category.id,
-          brandId: brand.id,
-          typeId: type.id,
-          caliberId: caliber.id,
+          categories: {
+            connect: { id: category.id },
+          },
+          brands: {
+            connect: { id: brand.id },
+          },
+          types: {
+            connect: { id: type.id },
+          },
+          calibers: {
+            connect: { id: caliber.id },
+          },
         },
       });
     } else {
@@ -162,10 +170,18 @@ async function createProducts(products: SeedProductInput[]) {
           quantity: p.quantity,
           licenseRequired: p.licenseRequired,
           tag: p.tag,
-          categoryId: category.id,
-          brandId: brand.id,
-          typeId: type.id,
-          caliberId: caliber.id,
+          categories: {
+            connect: { id: category.id },
+          },
+          brands: {
+            connect: { id: brand.id },
+          },
+          types: {
+            connect: { id: type.id },
+          },
+          calibers: {
+            connect: { id: caliber.id },
+          },
           photos: {
             create: p.photos.map((ph, idx) => ({
               url: ph.url,

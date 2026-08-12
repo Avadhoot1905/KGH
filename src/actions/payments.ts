@@ -2,21 +2,7 @@
 
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
-import { PrismaClient } from "@prisma/client";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
+import { prisma } from "@/lib/prisma";
 
 /**
  * Check if user is authenticated

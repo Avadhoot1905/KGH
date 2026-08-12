@@ -1,24 +1,11 @@
 "use server";
 
-import { PrismaClient, FeedbackType, ReturnStatus } from "@prisma/client";
+import { FeedbackType, ReturnStatus } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { isAdmin } from "@/lib/adminAuth";
 import { revalidatePath } from "next/cache";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
 
 interface TestimonialOutput {
   id: string;

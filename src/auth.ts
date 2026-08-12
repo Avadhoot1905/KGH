@@ -9,6 +9,29 @@ export const authOptions: NextAuthOptions = {
   session: {
     strategy: "jwt",
   },
+  debug: process.env.NODE_ENV !== "production",
+  cookies: process.env.NEXTAUTH_URL?.includes("ngrok")
+    ? {
+        pkceCodeVerifier: {
+          name: "next-auth.pkce.code_verifier",
+          options: {
+            httpOnly: true,
+            sameSite: "none",
+            path: "/",
+            secure: true,
+          },
+        },
+        state: {
+          name: "next-auth.state",
+          options: {
+            httpOnly: true,
+            sameSite: "none",
+            path: "/",
+            secure: true,
+          },
+        },
+      }
+    : undefined,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,

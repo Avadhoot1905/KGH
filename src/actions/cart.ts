@@ -1,22 +1,8 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
 
 export async function addToCart(productId: string, quantity: number = 1) {
   if (!productId) throw new Error("productId is required");
@@ -120,8 +106,8 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
     include: {
       product: {
         include: {
-          brand: { select: { name: true } },
-          category: { select: { name: true } },
+          brands: { select: { name: true } },
+          categories: { select: { name: true } },
           photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" } },
         },
       },
@@ -135,8 +121,8 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
       id: c.id,
       productId: c.productId,
       name: c.product.name,
-      category: c.product.category.name,
-      brand: c.product.brand.name,
+      category: c.product.categories.map((cat: { name: string }) => cat.name).join(", "),
+      brand: c.product.brands.map((b: { name: string }) => b.name).join(", "),
       price: c.product.price,
       quantity: c.quantity,
       image: primary?.url || "/next.svg",

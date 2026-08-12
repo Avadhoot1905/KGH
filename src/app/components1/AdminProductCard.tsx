@@ -54,7 +54,11 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showConfirmDelete, setShowConfirmDelete] = useState(false);
-  const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>([]);
+  const [deleteCountdown, setDeleteCountdown] = useState<number | null>(null);
+  const deleteTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const [allProducts, setAllProducts] = useState<{ id: string; name: string }[]>(
+    []
+  );
   const [selectedRelatedIds, setSelectedRelatedIds] = useState<string[]>(
     product.relatedProducts?.map((p) => p.id) || []
   );
@@ -97,10 +101,18 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
 
   async function handleAddNewTag(tagName: string) {
     try {
-      const normalizedTag = await addNewTagAction(tagName);
+      const normalizedTag = await addNewTagAction(tagName, false);
       setTags((prev) => [...prev, normalizedTag].sort());
       return normalizedTag;
     } catch (error) {
+      if (error instanceof Error && error.message.includes("already exists")) {
+        const confirmBypass = window.confirm(`${error.message} Are you sure you want to create one anyway?`);
+        if (confirmBypass) {
+          const normalizedTag = await addNewTagAction(tagName, true);
+          setTags((prev) => [...prev, normalizedTag].sort());
+          return normalizedTag;
+        }
+      }
       console.error("Failed to add new tag:", error);
       throw error;
     }
@@ -199,6 +211,45 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     await deleteCategoryAction(categoryToDelete);
     setCategories((prev) => prev.filter((c) => c !== categoryToDelete));
   }
+
+  const startDeleteCountdown = () => {
+    setDeleteCountdown(5);
+    let count = 5;
+    
+    deleteTimerRef.current = setInterval(async () => {
+      count -= 1;
+      setDeleteCountdown(count);
+      
+      if (count <= 0) {
+        if (deleteTimerRef.current) {
+          clearInterval(deleteTimerRef.current);
+          deleteTimerRef.current = null;
+        }
+        setDeleteCountdown(null);
+        
+        try {
+          setPending(true);
+          await deleteProductAction(product.id);
+          setShowConfirmDelete(false);
+          router.refresh();
+        } catch (e: unknown) {
+          setError(e instanceof Error ? e.message : "Failed to delete product");
+          setShowConfirmDelete(false);
+        } finally {
+          setPending(false);
+        }
+      }
+    }, 1000);
+  };
+
+  const cancelDelete = () => {
+    if (deleteTimerRef.current) {
+      clearInterval(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+    setDeleteCountdown(null);
+    setShowConfirmDelete(false);
+  };
 
   async function loadProducts() {
     if (allProducts.length === 0 && !loadingProducts) {
@@ -375,10 +426,10 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
             <div><span className="text-gray-500 dark:text-gray-400">Price:</span> ₹{product.price.toFixed(2)}</div>
             <div><span className="text-gray-500 dark:text-gray-400">Qty:</span> {product.quantity}</div>
             <div><span className="text-gray-500 dark:text-gray-400">License:</span> {product.licenseRequired ? "Required" : "No"}</div>
-            <div><span className="text-gray-500 dark:text-gray-400">Brand:</span> {product.brand?.name}</div>
-            <div><span className="text-gray-500 dark:text-gray-400">Type:</span> {product.type?.name}</div>
-            <div><span className="text-gray-500 dark:text-gray-400">Caliber:</span> {product.caliber?.name}</div>
-            <div><span className="text-gray-500 dark:text-gray-400">Category:</span> {product.category?.name}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Brand:</span> {product.brands?.map(b => b.name).join(", ") || "—"}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Type:</span> {product.types?.map(t => t.name).join(", ") || "—"}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Caliber:</span> {product.calibers?.map(c => c.name).join(", ") || "—"}</div>
+            <div><span className="text-gray-500 dark:text-gray-400">Category:</span> {product.categories?.map(c => c.name).join(", ") || "—"}</div>
             {product.tag && <div><span className="text-gray-500 dark:text-gray-400">Tag:</span> {product.tag}</div>}
             {typeof product.averageRating === "number" && (
               <div><span className="text-gray-500 dark:text-gray-400">Avg Rating:</span> {product.averageRating?.toFixed(2)}</div>
@@ -417,23 +468,15 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         ) : (
           <div className="flex items-center gap-2">
             <button
-              className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700"
-              onClick={async () => {
-                try {
-                  await deleteProductAction(product.id);
-                  setShowConfirmDelete(false);
-                  router.refresh();
-                } catch (e: unknown) {
-                  setError(e instanceof Error ? e.message : "Failed to delete product");
-                  setShowConfirmDelete(false);
-                }
-              }}
+              disabled={deleteCountdown !== null}
+              className="px-3 py-1.5 rounded bg-red-600 text-white text-sm hover:bg-red-700 disabled:bg-red-800 disabled:opacity-85"
+              onClick={startDeleteCountdown}
             >
-              Confirm Delete
+              {deleteCountdown !== null ? `Deleting in ${deleteCountdown}s...` : "Confirm Delete"}
             </button>
             <button
               className="px-3 py-1.5 rounded border text-sm bg-[#111] text-white hover:bg-[#222] transition-colors"
-              onClick={() => setShowConfirmDelete(false)}
+              onClick={cancelDelete}
             >
               Cancel
             </button>
@@ -553,12 +596,13 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               onEdit={handleEditTag}
               onDelete={handleDeleteTag}
               textTransform="uppercase"
+              multiSelect={true}
             />
             <ManageableAutocompleteInput
               name="brandName"
               label="Brand Name"
               placeholder="e.g., Glock, Precihole"
-              defaultValue={product.brand?.name}
+              defaultValue={product.brands?.map(b => b.name).join(", ") || ""}
               options={brands}
               onAddNew={handleAddNewBrand}
               onEdit={handleEditBrand}
@@ -568,7 +612,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               name="typeName"
               label="Type Name"
               placeholder="e.g., Pistol, Rifle"
-              defaultValue={product.type?.name}
+              defaultValue={product.types?.map(t => t.name).join(", ") || ""}
               options={types}
               onAddNew={handleAddNewType}
               onEdit={handleEditType}
@@ -578,7 +622,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               name="caliberName"
               label="Caliber Name"
               placeholder="e.g., 9mm, .45 ACP"
-              defaultValue={product.caliber?.name}
+              defaultValue={product.calibers?.map(c => c.name).join(", ") || ""}
               options={calibers}
               onAddNew={handleAddNewCaliber}
               onEdit={handleEditCaliber}
@@ -588,7 +632,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
               name="categoryName"
               label="Category Name"
               placeholder="e.g., Handgun, Scope"
-              defaultValue={product.category?.name}
+              defaultValue={product.categories?.map(c => c.name).join(", ") || ""}
               options={categories}
               onAddNew={handleAddNewCategory}
               onEdit={handleEditCategory}

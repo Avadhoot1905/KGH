@@ -1,22 +1,8 @@
 "use server";
 
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/prisma";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
 
 export type ViewedProductItem = {
   id: string;
@@ -67,6 +53,9 @@ export type OrderListItem = {
   }>;
   createdAt: string;
   updatedAt: string;
+  trackingNumber?: string | null;
+  trackingUrl?: string | null;
+  carrier?: string | null;
 };
 
 export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANCELLED"): Promise<OrderListItem[]> {
@@ -83,6 +72,9 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
     total: number;
     createdAt: Date;
     updatedAt: Date;
+    trackingNumber?: string | null;
+    trackingUrl?: string | null;
+    carrier?: string | null;
     items: Array<{
       id: string;
       quantity: number;
@@ -142,6 +134,9 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
       month: "short",
       year: "numeric"
     }),
+    trackingNumber: order.trackingNumber || null,
+    trackingUrl: order.trackingUrl || null,
+    carrier: order.carrier || null,
   }));
 }
 
@@ -431,6 +426,9 @@ export async function getAdminOrders() {
     paymentStatus: order.payment?.status ?? "PENDING",
     orderStatus: order.status,
     createdAt: order.createdAt,
+    trackingNumber: order.trackingNumber ?? "",
+    trackingUrl: order.trackingUrl ?? "",
+    carrier: order.carrier ?? "",
   }));
 }
 
@@ -457,6 +455,36 @@ export async function updateOrderStatus(orderId: string, status: "PENDING" | "CO
   } catch (error) {
     console.error("Failed to update order status:", error);
     return { success: false, error: "Failed to update order" };
+  }
+}
+
+export async function updateOrderTracking(orderId: string, trackingNumber: string, trackingUrl: string, carrier?: string) {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+
+  if (!email) {
+    return { success: false, error: "Not authenticated" };
+  }
+
+  const isAdminUser = await (await import("@/lib/adminAuth")).isAdmin(email);
+  if (!isAdminUser) {
+    return { success: false, error: "Forbidden" };
+  }
+
+  try {
+    const updatedOrder = await prisma.order.update({
+      where: { id: orderId },
+      data: { 
+        trackingNumber: trackingNumber || null, 
+        trackingUrl: trackingUrl || null,
+        carrier: carrier || null
+      },
+    });
+
+    return { success: true, order: updatedOrder };
+  } catch (error) {
+    console.error("Failed to update order tracking:", error);
+    return { success: false, error: "Failed to update tracking details" };
   }
 }
 
@@ -501,6 +529,93 @@ export async function getAdminUsers() {
   });
 
   return users;
+}
+
+export async function getUserAddresses() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return { success: false, error: "Not authenticated", addresses: [] };
+
+  try {
+    const user = await prisma.user.findUnique({
+      where: { email },
+      include: { addresses: { orderBy: { createdAt: "desc" } } }
+    });
+    if (!user) return { success: false, error: "User not found", addresses: [] };
+    return { success: true, addresses: user.addresses };
+  } catch (error) {
+    console.error("Failed to fetch user addresses:", error);
+    return { success: false, error: "Failed to fetch addresses", addresses: [] };
+  }
+}
+
+export async function addAddress(data: {
+  fullName: string;
+  phoneNumber: string;
+  addressLine1: string;
+  addressLine2?: string;
+  landmark?: string;
+  city: string;
+  state: string;
+  country: string;
+  pincode: string;
+}) {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return { success: false, error: "Not authenticated" };
+
+  // Validate country is India
+  const countryCheck = (data.country || '').trim().toLowerCase();
+  if (countryCheck && !['india', 'in'].includes(countryCheck)) {
+    return { success: false, error: "We only deliver to India. International addresses are not accepted." };
+  }
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return { success: false, error: "User not found" };
+
+    const newAddress = await prisma.address.create({
+      data: {
+        userId: user.id,
+        fullName: data.fullName,
+        phoneNumber: data.phoneNumber,
+        addressLine1: data.addressLine1,
+        addressLine2: data.addressLine2,
+        landmark: data.landmark,
+        city: data.city,
+        state: data.state,
+        country: "India",
+        pincode: data.pincode,
+      }
+    });
+
+    return { success: true, address: newAddress };
+  } catch (error) {
+    console.error("Failed to add address:", error);
+    return { success: false, error: "Failed to add address" };
+  }
+}
+
+export async function deleteAddress(addressId: string) {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return { success: false, error: "Not authenticated" };
+
+  try {
+    const user = await prisma.user.findUnique({ where: { email } });
+    if (!user) return { success: false, error: "User not found" };
+
+    await prisma.address.deleteMany({
+      where: {
+        id: addressId,
+        userId: user.id
+      }
+    });
+    return { success: true };
+  } catch (error) {
+    console.error("Failed to delete address:", error);
+    return { success: false, error: "Failed to delete address" };
+  }
 }
 
 

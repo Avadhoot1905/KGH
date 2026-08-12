@@ -3,6 +3,7 @@ import Footer from '@/app/components1/Footer';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Target, Crosshair, Package, Eye } from 'lucide-react';
+import ProductCardGallery from '@/app/components1/ProductCardGallery';
 
 // Server-side check: log in terminal whether the hero images exist (runs only on server)
 async function checkHeroImageImports() {
@@ -20,6 +21,7 @@ if (typeof window === 'undefined') {
 
 
 import { getProducts } from '@/actions/products';
+import type { PaginatedProducts } from '@/actions/products';
 import { getHomeTestimonials } from '@/actions/feedbackAndReturns';
 import type { PrismaClient } from '@prisma/client';
 
@@ -30,7 +32,13 @@ declare global {
 }
 
 export default async function Home() {
-  let featuredProducts = { items: [] as Array<{ id: string; name: string; price: number; photos: Array<{ isPrimary?: boolean; url: string }> }> };
+  let featuredProducts: PaginatedProducts = {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 4,
+    totalPages: 0
+  };
   let testimonials: Array<{ id: string; content: string; userName: string }> = [];
 
   try {
@@ -176,20 +184,9 @@ export default async function Home() {
                 className="w-full max-w-[280px]"
               >
                 <div className="bg-[#1a1a1a] p-4 rounded-xl shadow-md hover:shadow-red-500/40 transition transform hover:-translate-y-1 flex flex-col justify-between h-full border border-white/5">
-                  {product.photos.length > 0 ? (
-                    <div className="relative w-full h-48 mb-4 bg-black/20 rounded-lg overflow-hidden flex items-center justify-center">
-                      <Image 
-                        src={product.photos.find(p => p.isPrimary)?.url || product.photos[0].url}
-                        alt={product.name}
-                        fill
-                        className="object-contain p-2 transition-transform duration-300 hover:scale-105"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-full h-48 bg-black/20 rounded-lg mb-4 flex items-center justify-center text-gray-600">
-                      No Image
-                    </div>
-                  )}
+                  <div className="mb-4">
+                    <ProductCardGallery photos={product.photos} productName={product.name} height="192px" />
+                  </div>
                   <div className="text-left flex-grow flex flex-col justify-between">
                     <h3 className="font-semibold text-base tracking-wide truncate text-white mb-2" title={product.name}>
                       {product.name}

@@ -1,7 +1,7 @@
 "use client";
 
 import { ProductListItem } from "@/actions/products";
-import { getAdminOrders, updateOrderStatus, getAdminUsers } from "@/actions/profile";
+import { getAdminOrders, updateOrderStatus, getAdminUsers, updateOrderTracking } from "@/actions/profile";
 import { 
   getAllFeedbacks, 
   updateFeedbackShowOnHome, 
@@ -52,6 +52,9 @@ type AdminOrderSummary = {
   paymentStatus: string;
   orderStatus: string;
   createdAt: Date;
+  trackingNumber?: string;
+  trackingUrl?: string;
+  carrier?: string;
 };
 
 export default function AdminProductsClient({ products }: AdminProductsClientProps) {
@@ -100,10 +103,10 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
         (product) =>
           product.name.toLowerCase().includes(query) ||
           product.description.toLowerCase().includes(query) ||
-          product.brand?.name.toLowerCase().includes(query) ||
-          product.type?.name.toLowerCase().includes(query) ||
-          product.category?.name.toLowerCase().includes(query) ||
-          product.caliber?.name.toLowerCase().includes(query)
+          product.brands?.some(b => b.name.toLowerCase().includes(query)) ||
+          product.types?.some(t => t.name.toLowerCase().includes(query)) ||
+          product.categories?.some(c => c.name.toLowerCase().includes(query)) ||
+          product.calibers?.some(c => c.name.toLowerCase().includes(query))
       );
     }
 
@@ -134,16 +137,16 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
         result = result.filter((product) => !product.tag || product.tag.trim() === "");
         break;
       case "CATEGORY":
-        result = result.filter((product) => !product.category || !product.category.name || product.category.name.trim() === "");
+        result = result.filter((product) => !product.categories || product.categories.length === 0);
         break;
       case "BRAND":
-        result = result.filter((product) => !product.brand || !product.brand.name || product.brand.name.trim() === "");
+        result = result.filter((product) => !product.brands || product.brands.length === 0);
         break;
       case "TYPE":
-        result = result.filter((product) => !product.type || !product.type.name || product.type.name.trim() === "");
+        result = result.filter((product) => !product.types || product.types.length === 0);
         break;
       case "CALIBER":
-        result = result.filter((product) => !product.caliber || !product.caliber.name || product.caliber.name.trim() === "");
+        result = result.filter((product) => !product.calibers || product.calibers.length === 0);
         break;
       case "PHOTOS":
         result = result.filter((product) => !product.photos || product.photos.length === 0);
@@ -154,10 +157,10 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
       case "ANY":
         result = result.filter((product) => 
           (!product.tag || product.tag.trim() === "") ||
-          (!product.category || !product.category.name || product.category.name.trim() === "") ||
-          (!product.brand || !product.brand.name || product.brand.name.trim() === "") ||
-          (!product.type || !product.type.name || product.type.name.trim() === "") ||
-          (!product.caliber || !product.caliber.name || product.caliber.name.trim() === "") ||
+          (!product.categories || product.categories.length === 0) ||
+          (!product.brands || product.brands.length === 0) ||
+          (!product.types || product.types.length === 0) ||
+          (!product.calibers || product.calibers.length === 0) ||
           (!product.photos || product.photos.length === 0) ||
           (!product.description || product.description.trim() === "")
         );
@@ -331,6 +334,15 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
     const result = await updateOrderStatus(orderId, nextStatus as "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED");
     if (result.success) {
       setOrders((current) => current.map((order) => order.id === orderId ? { ...order, orderStatus: nextStatus } : order));
+    }
+  };
+
+  const handleTrackingChange = async (orderId: string, trackingNumber: string, trackingUrl: string, carrier: string) => {
+    const result = await updateOrderTracking(orderId, trackingNumber, trackingUrl, carrier);
+    if (result.success) {
+      setOrders((current) => current.map((order) => order.id === orderId ? { ...order, trackingNumber, trackingUrl, carrier } : order));
+    } else {
+      alert(result.error || "Failed to update tracking info");
     }
   };
 
@@ -641,6 +653,50 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
                         <option value="FAILED">FAILED</option>
                       </select>
                     </label>
+
+                    <div className="pt-4 border-t border-[#2a2a2a] mt-4 space-y-2">
+                      <p className="font-semibold text-white text-xs uppercase tracking-wide">Tracking Information</p>
+                      
+                      <div className="grid grid-cols-2 gap-2">
+                        <label className="block text-xs text-gray-500">
+                          Carrier
+                          <input
+                            type="text"
+                            placeholder="e.g. DHL, BlueDart"
+                            defaultValue={order.carrier || ""}
+                            onBlur={async (e) => {
+                              await handleTrackingChange(order.id, order.trackingNumber || "", order.trackingUrl || "", e.target.value);
+                            }}
+                            className="mt-1 w-full rounded border border-[#333] bg-[#0f0f0f] px-2 py-1 text-sm text-white focus:outline-none focus:border-red-600"
+                          />
+                        </label>
+                        <label className="block text-xs text-gray-500">
+                          Tracking Number / ID
+                          <input
+                            type="text"
+                            placeholder="e.g. 12345678"
+                            defaultValue={order.trackingNumber || ""}
+                            onBlur={async (e) => {
+                              await handleTrackingChange(order.id, e.target.value, order.trackingUrl || "", order.carrier || "");
+                            }}
+                            className="mt-1 w-full rounded border border-[#333] bg-[#0f0f0f] px-2 py-1 text-sm text-white focus:outline-none focus:border-red-600"
+                          />
+                        </label>
+                      </div>
+                      
+                      <label className="block text-xs text-gray-500">
+                        Tracking Link / URL
+                        <input
+                          type="url"
+                          placeholder="e.g. https://dhl.com/track?id=..."
+                          defaultValue={order.trackingUrl || ""}
+                          onBlur={async (e) => {
+                            await handleTrackingChange(order.id, order.trackingNumber || "", e.target.value, order.carrier || "");
+                          }}
+                          className="mt-1 w-full rounded border border-[#333] bg-[#0f0f0f] px-2 py-1 text-sm text-white focus:outline-none focus:border-red-600"
+                        />
+                      </label>
+                    </div>
                   </div>
                 </div>
               </div>

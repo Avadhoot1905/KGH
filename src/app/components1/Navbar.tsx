@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
   FaShoppingCart,
@@ -8,11 +10,18 @@ import {
   FaStore,
   FaHome,
   FaCalendarAlt,
+  FaHeadset,
 } from "react-icons/fa";
 import SearchBar from "./SearchBar";
 import ProtectedLink from "./ProtectedLink";
+import AuthPopup from "./AuthPopup";
+import FeedbackPopup from "./FeedbackPopup";
 
 export default function Navbar() {
+  const { data: session } = useSession();
+  const [isComplaintOpen, setIsComplaintOpen] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
+
   return (
     <header
       className="
@@ -105,6 +114,23 @@ export default function Navbar() {
     <FaCalendarAlt className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
   </ProtectedLink>
 </div>
+        {/* COMPLAINTS */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              if (session?.user) {
+                setIsComplaintOpen(true);
+              } else {
+                setShowAuthPopup(true);
+              }
+            }}
+            title="Give feedback / File a Complaint"
+            className="focus:outline-none flex items-center"
+          >
+            <FaHeadset className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
+          </button>
+        </div>
+
         {/* PROFILE */}
         <ProtectedLink
           href="/profile"
@@ -115,6 +141,17 @@ export default function Navbar() {
           <FaUser className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
         </ProtectedLink>
       </div>
+
+      {isComplaintOpen && (
+        <FeedbackPopup onClose={() => setIsComplaintOpen(false)} initialType="COMPLAINT" />
+      )}
+      <AuthPopup
+        isOpen={showAuthPopup}
+        onClose={() => setShowAuthPopup(false)}
+        callbackUrl={typeof window !== "undefined" ? window.location.pathname : "/"}
+        title="Sign in to file a complaint"
+        message="Please sign in with Google to file a complaint or report an issue."
+      />
     </header>
   );
 }

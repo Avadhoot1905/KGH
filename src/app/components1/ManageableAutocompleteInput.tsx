@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { FiEdit2, FiTrash2 } from "react-icons/fi";
 
 type ManageableAutocompleteInputProps = {
@@ -16,6 +16,7 @@ type ManageableAutocompleteInputProps = {
   onLoadOptions?: () => void;
   className?: string;
   textTransform?: "uppercase" | "none";
+  multiSelect?: boolean;
 };
 
 export default function ManageableAutocompleteInput({
@@ -31,12 +32,15 @@ export default function ManageableAutocompleteInput({
   onLoadOptions,
   className = "",
   textTransform = "none",
+  multiSelect = false,
 }: ManageableAutocompleteInputProps) {
   const [value, setValue] = useState(defaultValue);
   const [showDropdown, setShowDropdown] = useState(false);
   const [filteredOptions, setFilteredOptions] = useState<string[]>([]);
   const [isNewOption, setIsNewOption] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  
   const inputRef = useRef<HTMLInputElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -44,9 +48,17 @@ export default function ManageableAutocompleteInput({
     setValue(defaultValue);
   }, [defaultValue]);
 
+  const getActiveQuery = useCallback((val: string) => {
+    if (!multiSelect) return val;
+    const parts = val.split(",");
+    return parts[parts.length - 1].trim();
+  }, [multiSelect]);
+
   useEffect(() => {
-    const checkValue = textTransform === "uppercase" ? value.trim().toUpperCase().replace(/\s+/g, "_") : value.trim();
-    if (checkValue === "") {
+    const activeQuery = getActiveQuery(value);
+    const checkValue = textTransform === "uppercase" ? activeQuery.toUpperCase().replace(/\s+/g, "_") : activeQuery;
+    
+    if (checkValue.trim() === "") {
       setFilteredOptions(options);
       setIsNewOption(false);
     } else {
@@ -60,7 +72,7 @@ export default function ManageableAutocompleteInput({
       );
       setIsNewOption(!exactMatch && checkValue.length > 0);
     }
-  }, [value, options, textTransform]);
+  }, [value, options, textTransform, multiSelect, getActiveQuery]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -80,6 +92,7 @@ export default function ManageableAutocompleteInput({
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setValue(e.target.value);
     setShowDropdown(true);
+    setHighlightedIndex(-1);
   };
 
   const handleFocus = () => {
@@ -90,23 +103,45 @@ export default function ManageableAutocompleteInput({
   };
 
   const handleSelectOption = (option: string) => {
-    setValue(option);
+    if (multiSelect) {
+      const parts = value.split(",").map((p) => p.trim());
+      parts[parts.length - 1] = option;
+      const newValue = parts.filter(Boolean).join(", ") + ", ";
+      setValue(newValue);
+    } else {
+      setValue(option);
+    }
     setShowDropdown(false);
     setIsNewOption(false);
+    setHighlightedIndex(-1);
     inputRef.current?.focus();
   };
 
   const handleAddNew = async () => {
-    let finalValue = value.trim();
+    const activeQuery = getActiveQuery(value);
+    let finalValue = activeQuery.trim();
     if (textTransform === "uppercase") {
       finalValue = finalValue.toUpperCase().replace(/\s+/g, "_");
     }
     if (!finalValue || !onAddNew) return;
 
+    // Check if the option exists with same spelling (case-insensitive)
+    const exists = options.some(opt => opt.toLowerCase() === finalValue.toLowerCase() || opt.toLowerCase() === activeQuery.trim().toLowerCase());
+    if (exists) {
+      const confirmAdd = window.confirm(`"${finalValue}" already exists. Are you sure you want to add/create this option again?`);
+      if (!confirmAdd) return;
+    }
+
     setIsProcessing(true);
     try {
       await onAddNew(finalValue);
-      setValue(finalValue);
+      if (multiSelect) {
+        const parts = value.split(",").map((p) => p.trim());
+        parts[parts.length - 1] = finalValue;
+        setValue(parts.filter(Boolean).join(", ") + ", ");
+      } else {
+        setValue(finalValue);
+      }
       setIsNewOption(false);
       setShowDropdown(false);
     } catch (error: unknown) {
@@ -162,6 +197,38 @@ export default function ManageableAutocompleteInput({
     }
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (!showDropdown) {
+      if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+        setShowDropdown(true);
+        setHighlightedIndex(0);
+      }
+      return;
+    }
+
+    if (e.key === "ArrowDown") {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev < filteredOptions.length - 1 ? prev + 1 : 0
+      );
+    } else if (e.key === "ArrowUp") {
+      e.preventDefault();
+      setHighlightedIndex((prev) =>
+        prev > 0 ? prev - 1 : filteredOptions.length - 1
+      );
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      if (highlightedIndex >= 0 && highlightedIndex < filteredOptions.length) {
+        handleSelectOption(filteredOptions[highlightedIndex]);
+      } else if (isNewOption && onAddNew) {
+        void handleAddNew();
+      }
+    } else if (e.key === "Escape") {
+      setShowDropdown(false);
+      setHighlightedIndex(-1);
+    }
+  };
+
   return (
     <label className={`flex flex-col gap-1 relative ${className}`}>
       <span className="text-sm text-gray-600 dark:text-gray-300">{label}</span>
@@ -172,6 +239,7 @@ export default function ManageableAutocompleteInput({
           value={value}
           onChange={handleInputChange}
           onFocus={handleFocus}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           required={required}
           autoComplete="off"
@@ -198,7 +266,11 @@ export default function ManageableAutocompleteInput({
           {filteredOptions.map((option, index) => (
             <div
               key={index}
-              className="px-3 py-2 cursor-pointer hover:bg-gray-100 dark:hover:bg-[#222] text-black dark:text-white text-sm flex items-center justify-between"
+              className={`px-3 py-2 cursor-pointer text-black dark:text-white text-sm flex items-center justify-between ${
+                index === highlightedIndex
+                  ? "bg-red-600/20 text-red-500 font-medium"
+                  : "hover:bg-gray-100 dark:hover:bg-[#222]"
+              }`}
               onClick={() => handleSelectOption(option)}
             >
               <span>{option}</span>
@@ -231,7 +303,7 @@ export default function ManageableAutocompleteInput({
 
       {isNewOption && onAddNew && showDropdown && (
         <div className="absolute top-full left-0 right-0 mt-1 bg-amber-50 dark:bg-amber-900/20 border border-amber-300 dark:border-amber-700 rounded p-2 text-xs text-amber-800 dark:text-amber-200 z-40">
-          <strong>&quot;{textTransform === "uppercase" ? value.trim().toUpperCase().replace(/\s+/g, "_") : value.trim()}&quot;</strong> is new. Click the <strong>+</strong> button to add it.
+          <strong>&quot;{getActiveQuery(value).trim()}&quot;</strong> is new. Click the <strong>+</strong> button or press Enter to add it.
         </div>
       )}
     </label>

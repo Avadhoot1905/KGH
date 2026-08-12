@@ -1,22 +1,9 @@
 "use server";
 
-import { PrismaClient, Prisma } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
-
-let prisma: PrismaClient;
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
-
-if (process.env.NODE_ENV === "production") {
-  prisma = new PrismaClient();
-} else {
-  if (!global.__PRISMA__) {
-    global.__PRISMA__ = new PrismaClient();
-  }
-  prisma = global.__PRISMA__;
-}
+import { prisma } from "@/lib/prisma";
 
 export async function toggleWishlist(productId: string) {
   if (!productId) throw new Error("productId is required");
@@ -186,8 +173,8 @@ export async function getWishlistRecommendations(): Promise<RecommendedProduct[]
         id: { in: ids },
       },
       include: {
-        brand: { select: { name: true } },
-        type: { select: { name: true } },
+        brands: { select: { name: true } },
+        types: { select: { name: true } },
         photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" } },
       },
       take: 12,
@@ -200,8 +187,8 @@ export async function getWishlistRecommendations(): Promise<RecommendedProduct[]
         name: p.name,
         price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
         img: primary?.url || "/next.svg",
-        brand: p.brand.name,
-        type: p.type.name,
+        brand: p.brands.map(b => b.name).join(", "),
+        type: p.types.map(t => t.name).join(", "),
       };
     });
   } catch (error) {

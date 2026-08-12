@@ -6,9 +6,9 @@ import Navbar from "../components1/Navbar";
 import Footer from "../components1/Footer";
 import Filters from "./Filters";
 import Link from "next/link";
-import Image from "next/image";
 import QuickWishlistButton from "../components1/QuickWishlistButton";
 import QuickAddToCartButton from "../components1/QuickAddToCartButton";
+import ProductCardGallery from "../components1/ProductCardGallery";
 import {
   getProducts,
   getFilterOptions,
@@ -259,6 +259,101 @@ function ShopContent() {
             </div>
           </div>
 
+          {/* Active Filters Bar like Goibibo */}
+          {(() => {
+            const activeBrands = (searchParams.get("brands") || "").split(",").filter(Boolean);
+            const activeTypes = (searchParams.get("types") || "").split(",").filter(Boolean);
+            const activeCategory = searchParams.get("category") || "";
+            const minPrice = searchParams.get("min") || "";
+            const maxPrice = searchParams.get("max") || "";
+
+            const hasActiveFilters = activeBrands.length > 0 || activeTypes.length > 0 || activeCategory || minPrice || maxPrice;
+
+            if (!hasActiveFilters) return null;
+
+            const removeBrand = (id: string) => {
+              const sp = new URLSearchParams(searchParams.toString());
+              const updated = activeBrands.filter(b => b !== id);
+              if (updated.length === 0) sp.delete("brands");
+              else sp.set("brands", updated.join(","));
+              router.push(`${pathname}?${sp.toString()}`);
+            };
+
+            const removeType = (id: string) => {
+              const sp = new URLSearchParams(searchParams.toString());
+              const updated = activeTypes.filter(t => t !== id);
+              if (updated.length === 0) sp.delete("types");
+              else sp.set("types", updated.join(","));
+              router.push(`${pathname}?${sp.toString()}`);
+            };
+
+            const clearAll = () => {
+              const sp = new URLSearchParams(searchParams.toString());
+              sp.delete("brands");
+              sp.delete("types");
+              sp.delete("category");
+              sp.delete("min");
+              sp.delete("max");
+              router.push(`${pathname}?${sp.toString()}`);
+            };
+
+            return (
+              <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: "8px", marginBottom: "1.5rem", padding: "8px 12px", background: "#151515", borderRadius: "8px", border: "1px solid #222" }}>
+                <span style={{ fontSize: "0.85rem", color: "#888", fontWeight: "600", marginRight: "4px" }}>Active Filters:</span>
+                
+                {activeCategory && (() => {
+                  const catObj = filtersData.categories.find(c => c.id === activeCategory || c.name.toLowerCase() === activeCategory.toLowerCase());
+                  return (
+                    <span key="cat" style={{ display: "inline-flex", alignItems: "center", background: "#ff3333", color: "#fff", padding: "4px 10px", borderRadius: "16px", fontSize: "0.8rem", fontWeight: "500" }}>
+                      Category: {catObj?.name || activeCategory}
+                      <button onClick={() => {
+                        const sp = new URLSearchParams(searchParams.toString());
+                        sp.delete("category");
+                        router.push(`${pathname}?${sp.toString()}`);
+                      }} style={{ background: "transparent", border: "none", color: "#fff", marginLeft: "6px", cursor: "pointer", fontWeight: "bold", padding: 0 }}>✕</button>
+                    </span>
+                  );
+                })()}
+
+                {activeBrands.map(bId => {
+                  const bObj = filtersData.brands.find(b => b.id === bId);
+                  return (
+                    <span key={bId} style={{ display: "inline-flex", alignItems: "center", background: "#ff3333", color: "#fff", padding: "4px 10px", borderRadius: "16px", fontSize: "0.8rem", fontWeight: "500" }}>
+                      Brand: {bObj?.name || bId}
+                      <button onClick={() => removeBrand(bId)} style={{ background: "transparent", border: "none", color: "#fff", marginLeft: "6px", cursor: "pointer", fontWeight: "bold", padding: 0 }}>✕</button>
+                    </span>
+                  );
+                })}
+
+                {activeTypes.map(tId => {
+                  const tObj = filtersData.types.find(t => t.id === tId);
+                  return (
+                    <span key={tId} style={{ display: "inline-flex", alignItems: "center", background: "#ff3333", color: "#fff", padding: "4px 10px", borderRadius: "16px", fontSize: "0.8rem", fontWeight: "500" }}>
+                      Type: {tObj?.name || tId}
+                      <button onClick={() => removeType(tId)} style={{ background: "transparent", border: "none", color: "#fff", marginLeft: "6px", cursor: "pointer", fontWeight: "bold", padding: 0 }}>✕</button>
+                    </span>
+                  );
+                })}
+
+                {(minPrice || maxPrice) && (
+                  <span style={{ display: "inline-flex", alignItems: "center", background: "#ff3333", color: "#fff", padding: "4px 10px", borderRadius: "16px", fontSize: "0.8rem", fontWeight: "500" }}>
+                    Price: {minPrice ? `₹${minPrice}` : "0"} - {maxPrice ? `₹${maxPrice}` : "Max"}
+                    <button onClick={() => {
+                      const sp = new URLSearchParams(searchParams.toString());
+                      sp.delete("min");
+                      sp.delete("max");
+                      router.push(`${pathname}?${sp.toString()}`);
+                    }} style={{ background: "transparent", border: "none", color: "#fff", marginLeft: "6px", cursor: "pointer", fontWeight: "bold", padding: 0 }}>✕</button>
+                  </span>
+                )}
+
+                <button onClick={clearAll} style={{ marginLeft: "auto", background: "transparent", border: "none", color: "#ff3333", fontSize: "0.8rem", fontWeight: "600", cursor: "pointer", padding: "4px 8px" }}>
+                  Clear All
+                </button>
+              </div>
+            );
+          })()}
+
           {loading ? (
             <p style={{ color: "#bbb", textAlign: "center" }}>
               Loading products...
@@ -274,10 +369,7 @@ function ShopContent() {
                 <div className="product-grid">
                   {filtersData.products.length > 0 ? (
                     filtersData.products.map((product: ProductListItem) => {
-                    const primaryPhoto =
-                      product.photos.find((p) => p.isPrimary) ??
-                      product.photos[0];
-                    const subtitle = `${product.caliber.name}, ${product.type.name}`;
+                    const subtitle = `${product.calibers.map(c => c.name).join(", ")}, ${product.types.map(t => t.name).join(", ")}`;
 
                     return (
                       <div
@@ -290,37 +382,18 @@ function ShopContent() {
                           href={`/ProductDetail/${product.id}`}
                           className="product-card"
                         >
-                          {product.tag && (
+                          {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
                             <span
+                              key={idx}
                               className={`tag ${
-                                product.tag === "NEW" ? "new" : "top"
+                                t === "NEW" ? "new" : "top"
                               }`}
+                              style={{ marginRight: 4, display: 'inline-block' }}
                             >
-                              {product.tag}
+                              {t}
                             </span>
-                          )}
-                          {primaryPhoto ? (
-                            <Image
-                              src={primaryPhoto.url}
-                              alt={primaryPhoto.alt ?? product.name}
-                              width={300}
-                              height={200}
-                              style={{
-                                width: "100%",
-                                height: "200px",
-                                objectFit: "contain",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          ) : (
-                            <div
-                              style={{
-                                height: 200,
-                                background: "#222",
-                                borderRadius: "8px",
-                              }}
-                            />
-                          )}
+                          ))}
+                          <ProductCardGallery photos={product.photos} productName={product.name} height="200px" />
                           <h4>{product.name}</h4>
                           <p>{subtitle}</p>
                           <div className="product-card-bottom">
@@ -337,35 +410,36 @@ function ShopContent() {
                     const fd = filtersData;
                     if (fd.noProductsForCategoryName) {
                       return (
-                        <div style={{ textAlign: "center", color: "#bbb", width: "100%" }}>
-                          <p>
-                            No products found from &quot;{fd.noProductsForCategoryName}&quot;
+                        <div style={{ textAlign: "center", color: "#bbb", width: "100%", gridColumn: "1 / -1" }}>
+                          <p style={{ marginBottom: "1.5rem" }}>
+                            No products found from &quot;{fd.noProductsForCategoryName}&quot;. Showing other products:
                           </p>
-                          <div className="product-grid">
+                          <div className="product-grid" style={{ width: "100%" }}>
                             {(fd.fallbackProducts || []).map((product: ProductListItem) => (
                               <div
                                 key={product.id}
                                 className="product-card-wrapper"
-                                style={{ position: "relative" }}
+                                style={{ position: "relative", width: "100%" }}
                               >
                                 <QuickWishlistButton productId={product.id} />
                                 <Link
                                   href={`/ProductDetail/${product.id}`}
                                   className="product-card"
                                 >
-                                  {product.photos[0] ? (
-                                    <Image
-                                      src={product.photos[0].url}
-                                      alt={product.photos[0].alt ?? product.name}
-                                      width={300}
-                                      height={200}
-                                      style={{ width: "100%", height: "200px", objectFit: "contain", borderRadius: "8px" }}
-                                    />
-                                  ) : (
-                                    <div style={{ height: 200, background: "#222", borderRadius: "8px" }} />
-                                  )}
+                                  {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
+                                    <span
+                                      key={idx}
+                                      className={`tag ${
+                                        t === "NEW" ? "new" : "top"
+                                      }`}
+                                      style={{ marginRight: 4, display: 'inline-block' }}
+                                    >
+                                      {t}
+                                    </span>
+                                  ))}
+                                  <ProductCardGallery photos={product.photos} productName={product.name} height="200px" />
                                   <h4>{product.name}</h4>
-                                  <p>{`${product.caliber.name}, ${product.type.name}`}</p>
+                                  <p>{`${product.calibers.map(c => c.name).join(", ")}, ${product.types.map(t => t.name).join(", ")}`}</p>
                                   <div className="product-card-bottom">
                                     <h3>{formatINR(product.price)}</h3>
                                     <QuickAddToCartButton productId={product.id} licenseRequired={product.licenseRequired} />

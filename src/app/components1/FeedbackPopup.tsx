@@ -7,11 +7,12 @@ import { FeedbackType } from '@prisma/client';
 
 interface FeedbackPopupProps {
   onClose: () => void;
+  initialType?: FeedbackType;
 }
 
-export default function FeedbackPopup({ onClose }: FeedbackPopupProps) {
+export default function FeedbackPopup({ onClose, initialType }: FeedbackPopupProps) {
   const [formData, setFormData] = useState({
-    type: 'FEEDBACK' as FeedbackType,
+    type: (initialType || 'FEEDBACK') as FeedbackType,
     content: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
