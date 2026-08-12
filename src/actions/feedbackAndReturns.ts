@@ -65,28 +65,33 @@ export async function createFeedback(data: { type: FeedbackType; content: string
 
 // Get Home Testimonials (Approved testimonials to display on the Home page)
 export async function getHomeTestimonials(): Promise<TestimonialOutput[]> {
-  const testimonials = await prisma.feedback.findMany({
-    where: {
-      type: "TESTIMONIAL",
-      showOnHome: true,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    include: {
-      user: {
-        select: {
-          name: true,
+  try {
+    const testimonials = await prisma.feedback.findMany({
+      where: {
+        type: "TESTIMONIAL",
+        showOnHome: true,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            name: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return testimonials.map((t) => ({
-    id: t.id,
-    content: t.content,
-    userName: t.user?.name || "Anonymous",
-  }));
+    return testimonials.map((t) => ({
+      id: t.id,
+      content: t.content,
+      userName: t.user?.name || "Anonymous",
+    }));
+  } catch (error) {
+    console.warn("Failed to query testimonials from database:", error instanceof Error ? error.message : String(error));
+    return [];
+  }
 }
 
 // Create Return Request

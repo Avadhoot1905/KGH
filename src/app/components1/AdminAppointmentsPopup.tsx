@@ -97,31 +97,88 @@ export default function AdminAppointmentsPopup({ onClose }: AdminAppointmentsPop
   const approvedCount = appointments.filter(apt => apt.status === 'APPROVED').length;
   const declinedCount = appointments.filter(apt => apt.status === 'DECLINED').length;
 
-  return (
-    <div className="admin-appointments-overlay" onClick={onClose}>
-      <div className="admin-appointments-popup" onClick={(e) => e.stopPropagation()}>
-        <button className="admin-appointments-close" onClick={onClose}>
-          ×
-        </button>
+    const exportToCsv = () => {
+      try {
+        const listToExport = filteredAppointments.length > 0 ? filteredAppointments : appointments;
+        const headers = ["Appointment ID", "User ID", "Customer Name", "Email", "Date", "Time Slot", "Reason", "Remarks", "Status", "Created At"];
+        const rows = listToExport.map(apt => [
+          apt.id,
+          apt.userId || "Guest",
+          apt.user?.name || "—",
+          apt.user?.email || "—",
+          formatDate(apt.date),
+          formatTime(apt.time),
+          apt.reason || "—",
+          apt.remarks || "—",
+          apt.status,
+          new Date(apt.createdAt).toLocaleString()
+        ]);
+        const csvContent = [
+          headers.join(","),
+          ...rows.map(row => row.map(val => `"${String(val).replace(/"/g, '""')}"`).join(","))
+        ].join("\n");
 
-        <div className="admin-appointments-header">
-          <h2 className="admin-appointments-title">Appointment Requests</h2>
-          <div className="contact-info">
-            <p><strong>Contact:</strong> {CONTACT_EMAIL}</p>
-            <p><strong>Phone:</strong> {CONTACT_PHONE}</p>
-            <p><strong>Phone 2:</strong> {CONTACT_PHONE_2}</p>
+        const blob = new Blob(["\uFEFF" + csvContent], { type: "text/csv;charset=utf-8;" });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.setAttribute("href", url);
+        const dateStr = new Date().toISOString().split('T')[0];
+        const filterStr = filter === 'all' ? 'all' : filter.toLowerCase();
+        link.setAttribute("download", `appointments_${filterStr}_${dateStr}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      } catch (err) {
+        console.error("Export failed", err);
+      }
+    };
+
+    return (
+      <div className="admin-appointments-overlay" onClick={onClose}>
+        <div className="admin-appointments-popup" onClick={(e) => e.stopPropagation()}>
+          <button className="admin-appointments-close" onClick={onClose}>
+            ×
+          </button>
+
+          <div className="admin-appointments-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "15px" }}>
+            <div>
+              <h2 className="admin-appointments-title">Appointment Requests</h2>
+              <div className="contact-info">
+                <p><strong>Contact:</strong> {CONTACT_EMAIL}</p>
+                <p><strong>Phone:</strong> {CONTACT_PHONE}</p>
+                <p><strong>Phone 2:</strong> {CONTACT_PHONE_2}</p>
+              </div>
+            </div>
+            {appointments.length > 0 && (
+              <button
+                type="button"
+                onClick={exportToCsv}
+                style={{
+                  padding: "8px 16px",
+                  background: "#27ae60",
+                  color: "white",
+                  border: "none",
+                  borderRadius: "5px",
+                  fontWeight: "bold",
+                  cursor: "pointer",
+                  fontSize: "13px"
+                }}
+              >
+                Download Excel (CSV)
+              </button>
+            )}
           </div>
-        </div>
 
-        {error && (
-          <div className="admin-error-message">
-            <p>{error}</p>
-            <button onClick={loadAppointments} className="retry-btn">Retry</button>
-          </div>
-        )}
+          {error && (
+            <div className="admin-error-message">
+              <p>{error}</p>
+              <button onClick={loadAppointments} className="retry-btn">Retry</button>
+            </div>
+          )}
 
-        {/* Filter Tabs */}
-        <div className="filter-tabs">
+          {/* Filter Tabs */}
+          <div className="filter-tabs">
           <button
             className={`filter-tab ${filter === 'all' ? 'active' : ''}`}
             onClick={() => setFilter('all')}

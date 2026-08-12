@@ -209,20 +209,31 @@ export async function getProducts(query?: ProductQuery): Promise<PaginatedProduc
   const skip = (page - 1) * pageSize;
   const take = pageSize;
 
-  const [total, products] = await Promise.all([
-    prisma.product.count({ where }),
-    prisma.product.findMany({ where, include: baseInclude, orderBy, skip, take }),
-  ]);
+  try {
+    const [total, products] = await Promise.all([
+      prisma.product.count({ where }),
+      prisma.product.findMany({ where, include: baseInclude, orderBy, skip, take }),
+    ]);
 
-  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+    const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
-  return {
-    items: products as unknown as ProductListItem[],
-    total,
-    page,
-    pageSize,
-    totalPages,
-  };
+    return {
+      items: products as unknown as ProductListItem[],
+      total,
+      page,
+      pageSize,
+      totalPages,
+    };
+  } catch (error) {
+    console.warn("Failed to fetch products from database:", error instanceof Error ? error.message : String(error));
+    return {
+      items: [],
+      total: 0,
+      page,
+      pageSize,
+      totalPages: 0,
+    };
+  }
 }
 
 // Back-compat wrappers (can be removed after consumers migrate)

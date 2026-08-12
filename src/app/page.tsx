@@ -23,13 +23,9 @@ if (typeof window === 'undefined') {
 import { getProducts } from '@/actions/products';
 import type { PaginatedProducts } from '@/actions/products';
 import { getHomeTestimonials } from '@/actions/feedbackAndReturns';
-import type { PrismaClient } from '@prisma/client';
+import { prisma } from '@/lib/prisma';
 
 export const dynamic = 'force-dynamic';
-
-declare global {
-  var __PRISMA__: PrismaClient | undefined;
-}
 
 export default async function Home() {
   let featuredProducts: PaginatedProducts = {
@@ -45,22 +41,11 @@ export default async function Home() {
     // Fetch active testimonials
     testimonials = await getHomeTestimonials();
   } catch (error) {
-    console.error('Failed to load testimonials:', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to load testimonials:', error instanceof Error ? error.message : String(error));
   }
 
   try {
     // Fetch all categories to find "Air Guns" category ID
-    const { PrismaClient } = await import('@prisma/client');
-    let prisma;
-    if (process.env.NODE_ENV === 'production') {
-      prisma = new PrismaClient();
-    } else {
-      if (!global.__PRISMA__) {
-        global.__PRISMA__ = new PrismaClient();
-      }
-      prisma = global.__PRISMA__;
-    }
-
     const airgunsCategories = await prisma.category.findMany({
       where: {
         name: {
@@ -79,7 +64,7 @@ export default async function Home() {
       pageSize: 4,
     });
   } catch (error) {
-    console.error('Failed to load homepage featured products:', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to load homepage featured products:', error instanceof Error ? error.message : String(error));
   }
   const categories = [
     { name: 'Air Guns', sub: 'Precision & Power', icon: Target },
