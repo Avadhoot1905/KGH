@@ -71,7 +71,6 @@ export default function Cart() {
   const [useWallet, setUseWallet] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [razorpayLoaded, setRazorpayLoaded] = useState(false);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
   const [pendingRemoveItem, setPendingRemoveItem] = useState<{ id: string; productId: string; name: string } | null>(null);
@@ -169,9 +168,11 @@ export default function Cart() {
       }
 
       // Step 2: Open Razorpay Checkout for remaining balance
-      if (!razorpayLoaded || !window.Razorpay) {
-        alert('Payment gateway is loading. Please wait a moment and try again.');
+      const hasRazorpay = typeof window !== 'undefined' && Boolean(window.Razorpay);
+      if (!hasRazorpay) {
+        alert('Payment gateway script is loading or blocked by browser extension. Please refresh and try again.');
         setIsProcessing(false);
+        paymentAttemptedRef.current = false;
         return;
       }
 
@@ -257,8 +258,7 @@ export default function Cart() {
       {/* Load Razorpay Checkout Script */}
       <Script
         src="https://checkout.razorpay.com/v1/checkout.js"
-        onLoad={() => setRazorpayLoaded(true)}
-        strategy="lazyOnload"
+        strategy="afterInteractive"
       />
 
       <Navbar />
