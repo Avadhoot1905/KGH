@@ -331,7 +331,7 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
   };
 
   const handleStatusChange = async (orderId: string, nextStatus: string) => {
-    const result = await updateOrderStatus(orderId, nextStatus as "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED");
+    const result = await updateOrderStatus(orderId, nextStatus as "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED" | "DELIVERED" | "SHIPPED" | "RETURNED" | "RETURN_REQUESTED");
     if (result.success) {
       setOrders((current) => current.map((order) => order.id === orderId ? { ...order, orderStatus: nextStatus } : order));
     }
@@ -646,9 +646,13 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
                         onChange={(event) => void handleStatusChange(order.id, event.target.value)}
                         className="mt-2 w-full rounded border border-[#333] bg-[#0f0f0f] px-3 py-2 text-sm text-white"
                       >
-                        <option value="PENDING">PENDING</option>
+                        <option value="PENDING">PENDING (In Transit)</option>
                         <option value="PAID">PAID</option>
+                        <option value="SHIPPED">SHIPPED</option>
+                        <option value="DELIVERED">DELIVERED</option>
                         <option value="COMPLETED">COMPLETED</option>
+                        <option value="RETURN_REQUESTED">RETURN_REQUESTED</option>
+                        <option value="RETURNED">RETURNED / REFUNDED</option>
                         <option value="CANCELLED">CANCELLED</option>
                         <option value="FAILED">FAILED</option>
                       </select>

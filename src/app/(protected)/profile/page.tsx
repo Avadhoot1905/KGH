@@ -1,8 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Heart, RotateCcw, LogOut } from "lucide-react";
+import { Heart, RotateCcw, LogOut, Pencil } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
@@ -10,7 +11,6 @@ import { getCurrentUser, type CurrentUser } from "@/actions/auth";
 import { getAllOrders, type OrderListItem } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
 import { getOrderStatusLabel, isOrderSuccessful } from "@/lib/orderStatus";
-import FinishProfileButton from "@/components/FinishProfileButton";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 
 import { createReturnRequest } from "@/actions/feedbackAndReturns";
@@ -28,6 +28,7 @@ export default function ProfilePage() {
   const [returnModalOpen, setReturnModalOpen] = useState(false);
   const [returnOrderId, setReturnOrderId] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState("");
+  const [refundDestination, setRefundDestination] = useState<"WALLET" | "ORIGINAL_PAYMENT">("WALLET");
   const [returnPhotoBase64, setReturnPhotoBase64] = useState("");
   const [isSubmittingReturn, setIsSubmittingReturn] = useState(false);
   const [returnError, setReturnError] = useState<string | null>(null);
@@ -59,14 +60,31 @@ export default function ProfilePage() {
   };
 
   const getFilteredOrders = () => {
-    if (activeTab === "all") return orders;
-    if (activeTab === "delivered") return orders.filter(order => isOrderSuccessful(order.status));
-    if (activeTab === "pending") return orders.filter(order => order.status === "PENDING" || order.status === "PAID");
+    if (activeTab === "delivered") return orders.filter(order => order.status === "DELIVERED" || order.status === "COMPLETED");
+    if (activeTab === "pending") return orders.filter(order => order.status === "PENDING" || order.status === "PAID" || order.status === "SHIPPED");
     return orders;
   };
 
+  const router = useRouter();
+  const [reorderingItemId, setReorderingItemId] = useState<string | null>(null);
+
+  const handleReorder = async (productId: string, quantity: number) => {
+    setReorderingItemId(productId);
+    try {
+      const { addToCart } = await import("@/actions/cart");
+      await addToCart(productId, quantity);
+      router.push("/Cart");
+    } catch (error) {
+      console.error("Failed to reorder item:", error);
+      alert("Failed to add item to cart for reorder. Please try again.");
+    } finally {
+      setReorderingItemId(null);
+    }
+  };
+
   const userPhone = user?.phoneNumber ?? user?.contact ?? null;
-  const profileComplete = Boolean(user?.profileCompleted || (user?.name && userPhone && user?.addressLine1 && user?.city && user?.state && user?.country && user?.postalCode));
+  const hasMinDetails = Boolean(user?.name && userPhone && user?.addressLine1 && user?.city && user?.state && user?.country && user?.postalCode);
+  const profileComplete = Boolean(user?.profileCompleted || hasMinDetails);
 
   const maskPhone = (value?: string | null) => {
     if (!value) return null;
@@ -78,7 +96,7 @@ export default function ProfilePage() {
     return `${first}${middle}${last}`;
   };
 
-  const maskedPhone = profileComplete ? maskPhone(userPhone) : null;
+  const maskedPhone = maskPhone(userPhone);
 
   const profileRows = [
     { label: "Name", value: user?.name },
@@ -89,7 +107,7 @@ export default function ProfilePage() {
   return (
     <>
       <Navbar />
-      <ProfileCompletionModal open={profileModalOpen} onClose={() => setProfileModalOpen(false)} onSaved={() => { setProfileModalOpen(false); void fetchData(); }} />
+      <ProfileCompletionModal open={profileModalOpen} mode={profileComplete ? "edit" : "create"} onClose={() => setProfileModalOpen(false)} onSaved={() => { setProfileModalOpen(false); void fetchData(); }} />
       <main className="min-h-screen bg-black text-white">
         <div className="flex flex-col lg:flex-row gap-6 p-4 md:p-6">
           <aside className="w-full lg:w-80 bg-[#111] p-6 rounded-3xl border border-gray-800 flex flex-col justify-between min-h-[520px]">
@@ -113,7 +131,7 @@ export default function ProfilePage() {
 
                 <div className="mt-4 space-y-1">
                   <h2 className="text-xl font-semibold">{user?.name ?? "Guest User"}</h2>
-                  {profileComplete && user?.email ? (
+                  {user?.email ? (
                     <p className="text-sm text-gray-400">{user.email}</p>
                   ) : null}
                 </div>
@@ -122,14 +140,34 @@ export default function ProfilePage() {
               <div className="mt-6 rounded-3xl bg-[#121212] border border-gray-800 p-5">
                 <div className="flex items-start gap-3">
                   <div className="flex-1">
-                    <p className="text-sm font-semibold text-white">Complete your profile</p>
+                    <p className="text-sm font-semibold text-white">
+                      {profileComplete ? "Your Profile" : "Complete your profile"}
+                    </p>
                     <p className="mt-2 text-sm text-gray-400 leading-relaxed">
-                      Add your name, phone number, address, and date of birth for a faster checkout experience.
+                      {profileComplete
+                        ? "Your details are saved for a faster checkout experience."
+                        : "Add your name, phone number, address, and pincode for a faster checkout experience."}
                     </p>
                   </div>
-                  <div className="flex h-11 w-11 items-center justify-center rounded-full bg-red-600 text-white">
-                    <Heart size={18} />
-                  </div>
+                  {profileComplete ? (
+                    <button
+                      type="button"
+                      onClick={() => setProfileModalOpen(true)}
+                      title="Edit profile"
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 cursor-pointer"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setProfileModalOpen(true)}
+                      title="Complete profile"
+                      className="flex h-11 w-11 items-center justify-center rounded-full bg-red-600 text-white transition hover:bg-red-700 cursor-pointer"
+                    >
+                      <Pencil size={18} />
+                    </button>
+                  )}
                 </div>
 
                 {profileComplete ? (
@@ -140,11 +178,18 @@ export default function ProfilePage() {
                         <span className="text-sm font-medium text-white break-words">{row.value}</span>
                       </div>
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setProfileModalOpen(true)}
+                      className="mt-4 inline-flex w-full justify-center gap-2 items-center rounded-2xl border border-gray-700 bg-gray-800/80 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-gray-700"
+                    >
+                      <Pencil size={15} /> Edit Profile Details
+                    </button>
                   </div>
                 ) : (
                   <div className="mt-6 text-center">
                     <p className="text-sm text-gray-400">
-                      Your profile is incomplete. Tap below to add the missing details and unlock a smoother experience.
+                      Your profile is incomplete. Tap below to add missing details like your phone number and address.
                     </p>
                     <div className="mt-5 flex flex-col gap-3">
                       <button
@@ -154,7 +199,6 @@ export default function ProfilePage() {
                       >
                         Complete your profile
                       </button>
-                      <FinishProfileButton profileIncomplete={!profileComplete} onCompleted={() => setProfileModalOpen(false)} />
                     </div>
                   </div>
                 )}
@@ -283,8 +327,12 @@ export default function ProfilePage() {
                                 <div className="w-full md:w-auto flex justify-end gap-2">
                                   {isOrderSuccessful(order.status) ? (
                                     <>
-                                      <button className="bg-red-600 hover:bg-red-700 text-sm px-3 py-2 rounded-2xl font-medium">
-                                        Reorder
+                                      <button
+                                        onClick={() => handleReorder(item.product.id, item.quantity)}
+                                        disabled={reorderingItemId === item.product.id}
+                                        className="bg-red-600 hover:bg-red-700 text-sm px-3 py-2 rounded-2xl font-medium cursor-pointer disabled:opacity-50"
+                                      >
+                                        {reorderingItemId === item.product.id ? "Adding..." : "Reorder"}
                                       </button>
                                       {(order.status as string) !== "RETURN_REQUESTED" && (order.status as string) !== "RETURNED" && (
                                         <button 
@@ -294,6 +342,7 @@ export default function ProfilePage() {
                                             setReturnSuccess(false);
                                             setReturnError(null);
                                             setReturnReason("");
+                                            setRefundDestination("WALLET");
                                             setReturnPhotoBase64("");
                                           }}
                                           className="bg-transparent border border-red-600 hover:bg-red-600/10 text-red-500 text-sm px-3 py-2 rounded-2xl font-medium"
@@ -531,7 +580,7 @@ export default function ProfilePage() {
                   try {
                     await createReturnRequest({
                       orderId: returnOrderId,
-                      reason: returnReason,
+                      reason: `${returnReason} [Refund to: ${refundDestination === "WALLET" ? "Store Wallet" : "Original Payment Method"}]`,
                       photoBase64: returnPhotoBase64,
                     });
                     setReturnSuccess(true);
@@ -552,6 +601,34 @@ export default function ProfilePage() {
                     className="bg-[#252525] border border-[#333] rounded-lg p-3 text-white text-sm focus:outline-none focus:border-[#d32f2f]"
                     required
                   />
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-sm font-semibold text-white">Refund Destination</label>
+                  <div className="flex flex-col gap-2 bg-[#252525] border border-[#333] rounded-lg p-3">
+                    <label className="flex items-center gap-2.5 cursor-pointer text-sm text-white">
+                      <input
+                        type="radio"
+                        name="refundDestination"
+                        value="WALLET"
+                        checked={refundDestination === "WALLET"}
+                        onChange={() => setRefundDestination("WALLET")}
+                        className="accent-red-600"
+                      />
+                      <span><strong>Store Wallet</strong> (Instant refund credit for future purchases)</span>
+                    </label>
+                    <label className="flex items-center gap-2.5 cursor-pointer text-sm text-white">
+                      <input
+                        type="radio"
+                        name="refundDestination"
+                        value="ORIGINAL_PAYMENT"
+                        checked={refundDestination === "ORIGINAL_PAYMENT"}
+                        onChange={() => setRefundDestination("ORIGINAL_PAYMENT")}
+                        className="accent-red-600"
+                      />
+                      <span><strong>Original Payment Method</strong> (Refund back to account / card used)</span>
+                    </label>
+                  </div>
                 </div>
 
                 <div className="flex flex-col gap-1.5">

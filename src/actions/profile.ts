@@ -432,7 +432,7 @@ export async function getAdminOrders() {
   }));
 }
 
-export async function updateOrderStatus(orderId: string, status: "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED") {
+export async function updateOrderStatus(orderId: string, status: "PENDING" | "COMPLETED" | "CANCELLED" | "PAID" | "FAILED" | "DELIVERED" | "SHIPPED" | "RETURNED" | "RETURN_REQUESTED") {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
 
