@@ -6,63 +6,141 @@ import { prisma } from "@/lib/prisma";
 import fs from "fs/promises";
 import path from "path";
 
-import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
 
-// S3 Upload Helper (Optional during development, active if S3 credentials are set)
-let s3Client: S3Client | null = null;
-if (
-  process.env.AWS_ACCESS_KEY_ID &&
-  process.env.AWS_SECRET_ACCESS_KEY &&
-  process.env.AWS_REGION &&
-  process.env.AWS_BUCKET_NAME
-) {
+// Allowed mime types and maximum file size (5MB)
+const ALLOWED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+  "image/avif",
+]);
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+
+function getS3Client(): { client: S3Client; bucketName: string; cdnUrl: string } {
+  const region = process.env.AWS_REGION;
+  const bucketName = process.env.AWS_BUCKET_NAME;
+  const cdnUrl = process.env.AWS_CDN_URL;
+
+  if (!region || !bucketName || !cdnUrl) {
+    throw new Error("Missing required S3/CloudFront configuration");
+  }
+
+  // Uses default AWS credential provider chain (e.g. EC2 IAM Role / Instance Metadata)
+  const client = new S3Client({
+    region,
+  });
+
+  return { client, bucketName, cdnUrl: cdnUrl.replace(/\/$/, "") };
+}
+
+function validateImageFile(file: File) {
+  if (!file || typeof file.arrayBuffer !== "function" || file.size === 0) {
+    throw new Error("Invalid file uploaded");
+  }
+
+  if (file.size > MAX_FILE_SIZE) {
+    throw new Error("File size exceeds 5MB limit");
+  }
+
+  if (!file.type || !ALLOWED_IMAGE_TYPES.has(file.type.toLowerCase())) {
+    throw new Error("Invalid image format. Allowed formats: JPEG, PNG, WEBP, GIF, AVIF");
+  }
+}
+
+async function deleteS3Image(url: string): Promise<void> {
+  if (!url) return;
+
   try {
-    s3Client = new S3Client({
-      region: process.env.AWS_REGION,
-      credentials: {
-        accessKeyId: process.env.AWS_ACCESS_KEY_ID,
-        secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
-      },
-    });
+    const { client, bucketName, cdnUrl } = getS3Client();
+
+    let key: string | null = null;
+
+    if (url.startsWith(cdnUrl)) {
+      key = url.slice(cdnUrl.length).replace(/^\//, "");
+    } else if (url.startsWith("/")) {
+      key = url.replace(/^\//, "");
+    } else {
+      try {
+        const parsedUrl = new URL(url);
+        key = parsedUrl.pathname.replace(/^\//, "");
+      } catch {
+        key = null;
+      }
+    }
+
+    if (!key || !key.startsWith("uploads/")) {
+      console.warn("Skipping S3 deletion for non-upload key or external URL:", url);
+      return;
+    }
+
+    await client.send(
+      new DeleteObjectCommand({
+        Bucket: bucketName,
+        Key: key,
+      })
+    );
   } catch (err) {
-    console.error("AWS SDK S3 Client could not be initialized:", err);
+    if (process.env.NODE_ENV === "development" && (!process.env.AWS_BUCKET_NAME || !process.env.AWS_CDN_URL)) {
+      console.warn("Development mode: skipping S3 deletion as credentials/config are missing.");
+      return;
+    }
+    console.error("Failed to delete S3 image:", err instanceof Error ? err.message : String(err));
+    throw new Error("Failed to delete product image from S3 storage");
   }
 }
 
 async function uploadImage(file: File, tempIndexOrId: number | string): Promise<string> {
+  validateImageFile(file);
+
   const bytes = Buffer.from(await file.arrayBuffer());
-  const safeName = `${Date.now()}_${tempIndexOrId}_${(file.name || "upload").replace(/[^a-zA-Z0-9_.-]/g, "_")}`;
+  const sanitizedOriginalName = (file.name || "upload")
+    .replace(/[^a-zA-Z0-9_.-]/g, "_")
+    .replace(/\.+/g, ".");
+  const safeName = `${Date.now()}_${tempIndexOrId}_${sanitizedOriginalName}`;
+  const key = `uploads/${safeName}`;
 
-  if (s3Client && process.env.AWS_BUCKET_NAME) {
-    try {
-      const bucketName = process.env.AWS_BUCKET_NAME;
-      const key = `uploads/${safeName}`;
-
-      await s3Client.send(
-        new PutObjectCommand({
-          Bucket: bucketName,
-          Key: key,
-          Body: bytes,
-          ContentType: file.type || "image/jpeg",
-        })
-      );
-
-      // Return S3 URL (use custom domain/CDN if set, otherwise default S3 endpoint URL)
-      if (process.env.AWS_CDN_URL) {
-        return `${process.env.AWS_CDN_URL.replace(/\/$/, "")}/${key}`;
-      }
-      return `https://${bucketName}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
-    } catch (s3Err) {
-      console.error("S3 upload failed, falling back to local storage:", s3Err);
+  let s3Config: { client: S3Client; bucketName: string; cdnUrl: string } | null = null;
+  try {
+    s3Config = getS3Client();
+  } catch {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("S3 storage configuration error");
     }
   }
 
-  // Fallback: Local Server Storage
-  const uploadsDir = path.join(process.cwd(), "public", "uploads");
-  await fs.mkdir(uploadsDir, { recursive: true });
-  const filePath = path.join(uploadsDir, safeName);
-  await fs.writeFile(filePath, bytes);
-  return `/uploads/${safeName}`;
+  if (s3Config) {
+    try {
+      await s3Config.client.send(
+        new PutObjectCommand({
+          Bucket: s3Config.bucketName,
+          Key: key,
+          Body: bytes,
+          ContentType: file.type || "image/jpeg",
+          CacheControl: "public, max-age=31536000, immutable",
+        })
+      );
+
+      return `${s3Config.cdnUrl}/${key}`;
+    } catch (s3Err) {
+      console.error("S3 upload failed:", s3Err instanceof Error ? s3Err.message : String(s3Err));
+      if (process.env.NODE_ENV === "production") {
+        throw new Error("Failed to upload product image to S3 storage");
+      }
+    }
+  }
+
+  if (process.env.NODE_ENV !== "production") {
+    console.warn("Development fallback: writing upload to local public/uploads directory");
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    await fs.mkdir(uploadsDir, { recursive: true });
+    const filePath = path.join(uploadsDir, safeName);
+    await fs.writeFile(filePath, bytes);
+    return `/uploads/${safeName}`;
+  }
+
+  throw new Error("S3 image upload required in production");
 }
 
 export type ProductListItem = {
@@ -452,23 +530,43 @@ export async function updateProductAction(
       console.error("Failed to parse photoMeta", e);
     }
 
+    // 1. Process new uploads and existing updates first (so S3 upload failures abort early without deleting existing images)
+    const newUploadsToCreate: Array<{ url: string; alt: string; isPrimary: boolean; position: number }> = [];
+
+    for (const item of photoMeta) {
+      if (typeof item.tempIndex === "number") {
+        const file = newPhotoFiles[item.tempIndex];
+        if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+          const publicUrl = await uploadImage(file, item.tempIndex);
+          newUploadsToCreate.push({
+            url: publicUrl,
+            alt: name || "product image",
+            isPrimary: item.isPrimary,
+            position: item.position,
+          });
+        }
+      }
+    }
+
+    // 2. Delete photos not present in photoMeta after successful S3 uploads
     const currentDbPhotos = await prisma.photo.findMany({
       where: { productId },
     });
 
-    // Delete photos not present in photoMeta
     const remainingIds = photoMeta.map(p => p.id).filter(Boolean) as string[];
     const deletedPhotos = currentDbPhotos.filter(dbP => !remainingIds.includes(dbP.id));
     if (deletedPhotos.length > 0) {
+      for (const photo of deletedPhotos) {
+        await deleteS3Image(photo.url);
+      }
       await prisma.photo.deleteMany({
         where: { id: { in: deletedPhotos.map(p => p.id) } },
       });
     }
 
-    // Process each photo item in photoMeta
+    // 3. Update existing photos in DB
     for (const item of photoMeta) {
       if (item.id) {
-        // Update existing photo
         await prisma.photo.update({
           where: { id: item.id },
           data: {
@@ -476,33 +574,50 @@ export async function updateProductAction(
             position: item.position,
           },
         });
-      } else if (typeof item.tempIndex === "number") {
-        // Upload new photo
-        const file = newPhotoFiles[item.tempIndex];
-        if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-          const publicUrl = await uploadImage(file, item.tempIndex);
-
-          await prisma.photo.create({
-            data: {
-              url: publicUrl,
-              alt: name || "product image",
-              isPrimary: item.isPrimary,
-              position: item.position,
-              productId,
-            },
-          });
-        }
       }
+    }
+
+    // 4. Save newly uploaded photo DB records
+    for (const newPhoto of newUploadsToCreate) {
+      await prisma.photo.create({
+        data: {
+          ...newPhoto,
+          productId,
+        },
+      });
     }
   } else {
     // Fallback/Legacy photo upload logic
+    let nextPosition = 0;
+    let hasPrimary = false;
+
     const existingPhotosStr = formData.get("existingPhotos") as string | null;
     let existingPhotos: Array<{ id: string; url: string; isPrimary: boolean; position: number }> = [];
     if (existingPhotosStr) {
       try {
         existingPhotos = JSON.parse(existingPhotosStr);
+        nextPosition = existingPhotos.length;
+        hasPrimary = existingPhotos.some(p => p.isPrimary);
       } catch (e) {
         console.error("Failed to parse existingPhotos", e);
+      }
+    }
+
+    // Upload new photos first
+    const newUploadsToCreate: Array<{ url: string; alt: string; isPrimary: boolean; position: number }> = [];
+    for (let i = 0; i < newPhotoFiles.length; i++) {
+      const file = newPhotoFiles[i];
+      if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
+        const publicUrl = await uploadImage(file, i);
+        const isPrimary = !hasPrimary;
+        if (isPrimary) hasPrimary = true;
+
+        newUploadsToCreate.push({
+          url: publicUrl,
+          alt: name || "product image",
+          isPrimary,
+          position: nextPosition++,
+        });
       }
     }
 
@@ -514,6 +629,9 @@ export async function updateProductAction(
     const deletedPhotos = currentDbPhotos.filter(dbP => !remainingIds.includes(dbP.id));
     
     if (deletedPhotos.length > 0) {
+      for (const photo of deletedPhotos) {
+        await deleteS3Image(photo.url);
+      }
       await prisma.photo.deleteMany({
         where: { id: { in: deletedPhotos.map(p => p.id) } },
       });
@@ -531,27 +649,13 @@ export async function updateProductAction(
       }
     }
 
-    let nextPosition = existingPhotos.length;
-    let hasPrimary = existingPhotos.some(p => p.isPrimary);
-
-    for (let i = 0; i < newPhotoFiles.length; i++) {
-      const file = newPhotoFiles[i];
-      if (file && typeof file === "object" && "arrayBuffer" in file && file.size > 0) {
-        const publicUrl = await uploadImage(file, i);
-
-        const isPrimary = !hasPrimary;
-        if (isPrimary) hasPrimary = true;
-
-        await prisma.photo.create({
-          data: {
-            url: publicUrl,
-            alt: name || "product image",
-            isPrimary,
-            position: nextPosition++,
-            productId,
-          },
-        });
-      }
+    for (const newPhoto of newUploadsToCreate) {
+      await prisma.photo.create({
+        data: {
+          ...newPhoto,
+          productId,
+        },
+      });
     }
   }
 
@@ -569,6 +673,15 @@ export async function deleteProductAction(productId: string) {
   const userIsAdmin = await isAdmin(session.user.email);
   if (!userIsAdmin) {
     throw new Error("Forbidden");
+  }
+
+  const photos = await prisma.photo.findMany({
+    where: { productId },
+    select: { url: true },
+  });
+
+  for (const photo of photos) {
+    await deleteS3Image(photo.url);
   }
 
   await prisma.product.update({
