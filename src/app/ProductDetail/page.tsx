@@ -45,7 +45,13 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
 
       <div className="product-detail-page">
         <div className="breadcrumb">
-          <a href="#">Home</a> &gt; <a href="#">{product.categories.map(c => c.name).join(", ")}</a> &gt; {product.name}
+          <Link href="/">Home</Link> &gt; {product.categories.length > 0 && product.categories.map(c => c.name).filter(Boolean).length > 0 ? (
+            <>
+              <Link href={`/Shop?category=${encodeURIComponent(product.categories[0].name)}`}>
+                {product.categories.map(c => c.name).filter(Boolean).join(", ")}
+              </Link> &gt;{" "}
+            </>
+          ) : null}{product.name}
         </div>
 
         <div className="product-main">
@@ -60,7 +66,9 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
                 <span key={idx} className="tag red">{t}</span>
               ))}
-              <span className="tag green">{product.types.map(t => t.name).join(", ")}</span>
+              {product.types && product.types.map(t => t.name).filter(Boolean).join(", ") ? (
+                <span className="tag green">{product.types.map(t => t.name).filter(Boolean).join(", ")}</span>
+              ) : null}
               <span className="tag red">{product.quantity > 0 ? "In Stock" : "Out of Stock"}</span>
             </div>
             <h1 className="product-title">{product.name}</h1>
