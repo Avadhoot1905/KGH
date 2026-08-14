@@ -8,7 +8,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getMyCartItems, removeCartItem, updateCartItemQuantity, moveCartItemToWishlist } from '@/actions/cart';
-import { getCurrentUserCheckoutDetails } from '@/actions/profile';
+import { getCurrentUserCheckoutDetails, getUserWalletDetails } from '@/actions/profile';
 import Image from 'next/image';
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
@@ -67,6 +67,8 @@ export default function Cart() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [walletBalance, setWalletBalance] = useState<number>(0);
+  const [useWallet, setUseWallet] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [razorpayLoaded, setRazorpayLoaded] = useState(false);
@@ -81,8 +83,14 @@ export default function Cart() {
     let mounted = true;
     (async () => {
       try {
-        const items = await getMyCartItems();
-        if (mounted) setCartItems(items);
+        const [items, walletInfo] = await Promise.all([
+          getMyCartItems(),
+          getUserWalletDetails(),
+        ]);
+        if (mounted) {
+          setCartItems(items);
+          setWalletBalance(walletInfo.balance);
+        }
       } finally {
         if (mounted) setLoading(false);
       }
@@ -95,7 +103,9 @@ export default function Cart() {
   const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
   const shipping = subtotal * 0.05;
   const tax = subtotal * 0.0875;
-  const total = subtotal + shipping + tax;
+  const totalBeforeWallet = subtotal + shipping + tax;
+  const walletDeduction = useWallet && walletBalance > 0 ? Math.min(walletBalance, totalBeforeWallet) : 0;
+  const total = totalBeforeWallet - walletDeduction;
 
   useEffect(() => {
     if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || cartItems.length === 0 || !razorpayLoaded) {
@@ -140,6 +150,7 @@ export default function Cart() {
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ useWallet }),
       });
 
       if (!response.ok) {
@@ -149,7 +160,15 @@ export default function Cart() {
 
       const data = await response.json();
 
-      // Step 2: Open Razorpay Checkout
+      // If order is 100% paid with wallet credits
+      if (data.paidWithWallet) {
+        setCartItems([]);
+        setIsProcessing(false);
+        router.push('/Cart/success');
+        return;
+      }
+
+      // Step 2: Open Razorpay Checkout for remaining balance
       if (!window.Razorpay) {
         alert('Payment gateway not loaded. Please refresh and try again.');
         setIsProcessing(false);
@@ -339,8 +358,34 @@ export default function Cart() {
                 <span>Tax</span>
                 <span>₹{tax.toFixed(2)}</span>
               </div>
+              {walletBalance > 0 && (
+                <div className="my-3 p-3 rounded-lg bg-[#1a1a1a] border border-[#333] space-y-2 text-xs">
+                  <label className="flex items-center gap-2 cursor-pointer text-white font-semibold select-none">
+                    <input
+                      type="checkbox"
+                      checked={useWallet}
+                      onChange={(e) => setUseWallet(e.target.checked)}
+                      className="w-4 h-4 accent-red-600 cursor-pointer"
+                    />
+                    <span>Use Store Wallet Balance (₹{walletBalance.toLocaleString("en-IN")})</span>
+                  </label>
+                  {useWallet && (
+                    <p className="text-gray-400 text-[11px] pl-6">
+                      {walletBalance >= totalBeforeWallet
+                        ? "100% of order cost will be paid using your Store Wallet!"
+                        : `₹${walletDeduction.toFixed(2)} deducted from wallet. Pay remaining balance of ₹${total.toFixed(2)} via Razorpay.`}
+                    </p>
+                  )}
+                </div>
+              )}
+              {useWallet && walletDeduction > 0 && (
+                <div className="summary-row text-green-500 font-semibold">
+                  <span>Wallet Discount</span>
+                  <span>-₹{walletDeduction.toFixed(2)}</span>
+                </div>
+              )}
               <div className="summary-row total">
-                <span>Total</span>
+                <span>Final Payable Amount</span>
                 <span>₹{total.toFixed(2)}</span>
               </div>
               <button 

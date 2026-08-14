@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
@@ -10,7 +10,7 @@ const razorpay = new Razorpay({
   key_secret: process.env.RAZORPAY_KEY_SECRET!,
 });
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     // Authenticate user
     const session = await getServerSession(authOptions);
@@ -95,14 +95,99 @@ export async function POST() {
       }
     }
 
+    let reqBody = { useWallet: false };
+    try {
+      reqBody = await req.json();
+    } catch {
+      // Body empty or not JSON
+    }
+    const useWallet = Boolean(reqBody.useWallet);
+
+    // Calculate user's wallet balance from returned orders
+    const returnedOrders = await prisma.order.findMany({
+      where: { userId, status: "RETURNED" },
+      select: { total: true }
+    });
+    const walletBalance = returnedOrders.reduce((sum, o) => sum + o.total, 0);
+
     const shipping = subtotal * 0.05; // 5% of product subtotal price
     const tax = subtotal * 0.0875;
-    const total = subtotal + shipping + tax;
+    const totalBeforeWallet = subtotal + shipping + tax;
 
-    // Convert to paise (smallest currency unit for INR)
-    const amountInPaise = Math.round(total * 100);
+    let walletApplied = 0;
+    if (useWallet && walletBalance > 0) {
+      walletApplied = Math.min(walletBalance, totalBeforeWallet);
+    }
 
-    // Create Razorpay order
+    const finalTotal = totalBeforeWallet - walletApplied;
+    const amountInPaise = Math.round(finalTotal * 100);
+
+    // If final total after wallet deduction is 0 (100% covered by wallet)
+    if (amountInPaise === 0) {
+      const order = await prisma.$transaction(async (tx) => {
+        const newOrder = await tx.order.create({
+          data: {
+            userId,
+            fullName: user.name ?? '',
+            email: user.email ?? '',
+            phoneNumber: user.phoneNumber ?? '',
+            addressLine1: user.addressLine1 ?? '',
+            addressLine2: user.addressLine2 ?? null,
+            landmark: user.landmark ?? null,
+            city: user.city ?? '',
+            state: user.state ?? '',
+            country: user.country ?? '',
+            pincode: user.pincode ?? '',
+            subtotal,
+            shippingCost: shipping,
+            discount: walletApplied,
+            tax,
+            total: 0,
+            status: 'PAID',
+            razorpayOrderId: `WALLET_${Date.now()}`,
+            items: {
+              create: cartItems.map((item) => ({
+                productId: item.product.id,
+                quantity: item.quantity,
+                price: item.product.price,
+              })),
+            },
+          },
+        });
+
+        await tx.payment.create({
+          data: {
+            orderId: newOrder.id,
+            amount: 0,
+            currency: 'INR',
+            status: 'CAPTURED',
+            razorpayPaymentId: `WALLET_PAYMENT_${Date.now()}`,
+          },
+        });
+
+        await tx.cart.updateMany({
+          where: { userId, removedAt: null },
+          data: { removedAt: new Date() },
+        });
+
+        for (const item of cartItems) {
+          await tx.product.update({
+            where: { id: item.productId },
+            data: { quantity: { decrement: item.quantity } },
+          });
+        }
+
+        return newOrder;
+      });
+
+      return NextResponse.json({
+        paidWithWallet: true,
+        orderId: order.id,
+        amount: 0,
+      });
+    }
+
+    // Create Razorpay order for remaining balance
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',
@@ -110,6 +195,7 @@ export async function POST() {
       notes: {
         userId,
         cartItemsCount: cartItems.length.toString(),
+        walletApplied: walletApplied.toString(),
       },
     });
 
@@ -129,9 +215,9 @@ export async function POST() {
         pincode: user.pincode ?? '',
         subtotal,
         shippingCost: shipping,
-        discount: 0,
+        discount: walletApplied,
         tax,
-        total,
+        total: finalTotal,
         status: 'PENDING',
         razorpayOrderId: razorpayOrder.id,
         items: {
@@ -148,7 +234,7 @@ export async function POST() {
     await prisma.payment.create({
       data: {
         orderId: order.id,
-        amount: total,
+        amount: finalTotal,
         currency: 'INR',
         status: 'PENDING',
       },
@@ -156,6 +242,8 @@ export async function POST() {
 
     // Return order details to frontend
     return NextResponse.json({
+      paidWithWallet: false,
+      walletApplied,
       orderId: razorpayOrder.id,
       amount: amountInPaise,
       currency: razorpayOrder.currency,

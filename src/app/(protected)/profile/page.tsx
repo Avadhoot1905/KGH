@@ -1,14 +1,14 @@
 "use client";
 import { useState, useEffect } from "react";
 import Image from "next/image";
-import { Heart, RotateCcw, LogOut, Pencil } from "lucide-react";
+import { Heart, RotateCcw, LogOut, Pencil, Wallet } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { signOut } from "next-auth/react";
 import Navbar from "@/app/components1/Navbar";
 import Footer from "@/app/components1/Footer";
 import { getCurrentUser, type CurrentUser } from "@/actions/auth";
-import { getAllOrders, type OrderListItem } from "@/actions/profile";
+import { getAllOrders, type OrderListItem, getUserWalletDetails } from "@/actions/profile";
 import { getMyWishlistItems, type WishlistListItem } from "@/actions/wishlist";
 import { getOrderStatusLabel, isOrderSuccessful } from "@/lib/orderStatus";
 import ProfileCompletionModal from "@/components/ProfileCompletionModal";
@@ -16,11 +16,12 @@ import ProfileCompletionModal from "@/components/ProfileCompletionModal";
 import { createReturnRequest } from "@/actions/feedbackAndReturns";
 
 export default function ProfilePage() {
-  const [activeSection, setActiveSection] = useState<"orders" | "returns" | "wishlist">("orders");
+  const [activeSection, setActiveSection] = useState<"orders" | "wallet" | "returns" | "wishlist">("orders");
   const [activeTab, setActiveTab] = useState("all");
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [orders, setOrders] = useState<OrderListItem[]>([]);
   const [wishlistItems, setWishlistItems] = useState<WishlistListItem[]>([]);
+  const [wallet, setWallet] = useState<{ balance: number; transactions: Array<{ id: string; type: string; amount: number; description: string; date: Date }> }>({ balance: 0, transactions: [] });
   const [loading, setLoading] = useState(true);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
 
@@ -41,15 +42,18 @@ export default function ProfilePage() {
   async function fetchData() {
     setLoading(true);
     try {
-      const userData = await getCurrentUser();
-      setUser(userData);
-      const ordersData = await getAllOrders();
-      setOrders(ordersData);
-
-      const wishlistData = await getMyWishlistItems();
-      setWishlistItems(wishlistData);
-    } catch (error) {
-      console.error("Failed to fetch data:", error);
+      const [u, o, w, wall] = await Promise.all([
+        getCurrentUser(),
+        getAllOrders(),
+        getMyWishlistItems(),
+        getUserWalletDetails(),
+      ]);
+      setUser(u);
+      setOrders(o);
+      setWishlistItems(w);
+      setWallet(wall);
+    } catch (err) {
+      console.error(err);
     } finally {
       setLoading(false);
     }
@@ -230,6 +234,17 @@ export default function ProfilePage() {
                     Your Orders
                   </button>
                   <button
+                    onClick={() => setActiveSection("wallet")}
+                    className={`pb-1 flex items-center gap-1 font-semibold ${
+                      activeSection === "wallet"
+                        ? "text-red-500 border-b-2 border-red-600"
+                        : "text-gray-400 hover:text-white"
+                    }`}
+                    suppressHydrationWarning={true}
+                  >
+                    <Wallet size={16} /> My Wallet
+                  </button>
+                  <button
                     onClick={() => setActiveSection("returns")}
                     className={`pb-1 flex items-center gap-1 font-semibold ${
                       activeSection === "returns"
@@ -395,6 +410,69 @@ export default function ProfilePage() {
                       ))}
                     </div>
                   )}
+                </div>
+              )}
+
+               {activeSection === "wallet" && (
+                <div className="space-y-6">
+                  <h3 className="text-lg font-semibold">My Store Wallet</h3>
+
+                  <div 
+                    className="p-6 rounded-2xl text-white relative overflow-hidden flex flex-col justify-between"
+                    style={{
+                      background: "linear-gradient(135deg, #1e1e1e 0%, #0d0d0d 100%)",
+                      border: "1px solid #333",
+                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)"
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-gray-400 text-sm">
+                        <Wallet size={20} className="text-red-500" />
+                        <span>Available Store Credits</span>
+                      </div>
+                      <span className="text-xs px-2.5 py-1 rounded-full bg-red-950/60 border border-red-800/60 text-red-400 font-semibold uppercase tracking-wider">
+                        KGH Wallet
+                      </span>
+                    </div>
+
+                    <div className="my-4">
+                      <p className="text-3xl md:text-4xl font-bold tracking-tight text-white">
+                        ₹{wallet.balance.toLocaleString("en-IN")}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Use store credits towards your future product purchases at checkout.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <h4 className="text-sm font-semibold text-gray-300 uppercase tracking-wider mb-3">Wallet Activity &amp; Refund History</h4>
+                    {wallet.transactions.length === 0 ? (
+                      <div className="bg-[#1a1a1a] rounded-2xl p-6 text-center border border-[#2a2a2a]">
+                        <p className="text-gray-400 text-sm">No wallet transactions yet.</p>
+                        <p className="text-xs text-gray-500 mt-1">Approved return refunds requested to Store Wallet will appear here instantly.</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {wallet.transactions.map((tx) => (
+                          <div key={tx.id} className="bg-[#1a1a1a] rounded-2xl p-4 border border-[#2a2a2a] flex items-center justify-between">
+                            <div className="space-y-1">
+                              <p className="font-semibold text-sm text-white">{tx.description}</p>
+                              <p className="text-xs text-gray-400">
+                                {new Date(tx.date).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                              </p>
+                            </div>
+                            <div className="text-right">
+                              <span className="font-bold text-green-500 text-base">
+                                +₹{tx.amount.toLocaleString("en-IN")}
+                              </span>
+                              <p className="text-[10px] uppercase font-bold text-green-600 tracking-wider">Credited</p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -618,6 +618,40 @@ export async function deleteAddress(addressId: string) {
   }
 }
 
+export async function getUserWalletDetails() {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return { balance: 0, transactions: [] };
+
+  const user = await prisma.user.findUnique({
+    where: { email },
+    include: {
+      orders: {
+        where: { status: "RETURNED" },
+        select: { id: true, total: true, updatedAt: true }
+      }
+    }
+  });
+
+  if (!user) return { balance: 0, transactions: [] };
+
+  // Calculate balance from returned order credits
+  const returnTransactions = user.orders.map((o) => ({
+    id: `TX-${o.id.slice(-6)}`,
+    type: "CREDIT" as const,
+    amount: o.total,
+    description: `Refund Credit for Return Order #${o.id.slice(-6)}`,
+    date: o.updatedAt,
+  }));
+
+  const totalBalance = returnTransactions.reduce((sum, tx) => sum + tx.amount, 0);
+
+  return {
+    balance: totalBalance,
+    transactions: returnTransactions,
+  };
+}
+
 
 
 
