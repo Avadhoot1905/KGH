@@ -455,10 +455,10 @@ export async function updateProductAction(
     quantity?: number;
     licenseRequired?: boolean;
     tag?: string | null;
-    brand?: { connect: { id: string } };
-    type?: { connect: { id: string } };
-    caliber?: { connect: { id: string } };
-    category?: { connect: { id: string } };
+    brands?: { set: Array<{ id: string }> };
+    types?: { set: Array<{ id: string }> };
+    calibers?: { set: Array<{ id: string }> };
+    categories?: { set: Array<{ id: string }> };
     relatedProducts?: { set: Array<{ id: string }> };
   };
 
@@ -477,7 +477,7 @@ export async function updateProductAction(
       update: {},
       create: { name: brandName },
     });
-    data.brand = { connect: { id: brand.id } };
+    data.brands = { set: [{ id: brand.id }] };
   }
   if (typeName) {
     const type = await prisma.type.upsert({
@@ -485,7 +485,7 @@ export async function updateProductAction(
       update: {},
       create: { name: typeName },
     });
-    data.type = { connect: { id: type.id } };
+    data.types = { set: [{ id: type.id }] };
   }
   if (caliberName) {
     const caliber = await prisma.caliber.upsert({
@@ -493,7 +493,7 @@ export async function updateProductAction(
       update: {},
       create: { name: caliberName },
     });
-    data.caliber = { connect: { id: caliber.id } };
+    data.calibers = { set: [{ id: caliber.id }] };
   }
   if (categoryName) {
     const category = await prisma.category.upsert({
@@ -501,7 +501,7 @@ export async function updateProductAction(
       update: {},
       create: { name: categoryName },
     });
-    data.category = { connect: { id: category.id } };
+    data.categories = { set: [{ id: category.id }] };
   }
 
   // Handle related products
@@ -958,10 +958,10 @@ export async function createProductAction(formData: FormData) {
     quantity: number;
     licenseRequired: boolean;
     tag?: string;
-    brand: { connect: { id: string } };
-    type: { connect: { id: string } };
-    caliber: { connect: { id: string } };
-    category: { connect: { id: string } };
+    brands: { connect: Array<{ id: string }> };
+    types: { connect: Array<{ id: string }> };
+    calibers: { connect: Array<{ id: string }> };
+    categories: { connect: Array<{ id: string }> };
     relatedProducts?: { connect: Array<{ id: string }> };
     photos?: { create: Array<{ url: string; alt?: string | null; isPrimary: boolean; position: number }> };
   };
@@ -973,10 +973,10 @@ export async function createProductAction(formData: FormData) {
     quantity,
     licenseRequired: licenseRequiredStr === "on" || licenseRequiredStr === "true" ? true : false,
     tag: tag || undefined,
-    brand: { connect: { id: brand.id } },
-    type: { connect: { id: type.id } },
-    caliber: { connect: { id: caliber.id } },
-    category: { connect: { id: category.id } },
+    brands: { connect: [{ id: brand.id }] },
+    types: { connect: [{ id: type.id }] },
+    calibers: { connect: [{ id: caliber.id }] },
+    categories: { connect: [{ id: category.id }] },
   };
 
   // Handle related products
