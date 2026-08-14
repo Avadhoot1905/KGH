@@ -86,7 +86,7 @@ export default async function Home() {
           alt="Hero banner"
           fill
           className="absolute inset-0 z-0 w-full h-full object-cover object-center"
-          style={{ outline: '3px dashed #7CFC00', outlineOffset: '4px', filter: 'brightness(1.05) contrast(1.02)' }}
+          style={{ filter: 'brightness(1.05) contrast(1.02)' }}
           priority
         />
 

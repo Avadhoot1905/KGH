@@ -108,14 +108,14 @@ export default function Cart() {
   const total = totalBeforeWallet - walletDeduction;
 
   useEffect(() => {
-    if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || cartItems.length === 0 || !razorpayLoaded) {
+    if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || cartItems.length === 0) {
       return;
     }
 
     paymentAttemptedRef.current = true;
     void handleCheckout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentStep, isProcessing, razorpayLoaded, status, session?.user?.email, cartItems.length]);
+  }, [paymentStep, isProcessing, status, session?.user?.email, cartItems.length]);
 
   /**
    * Handle checkout button click
@@ -169,8 +169,8 @@ export default function Cart() {
       }
 
       // Step 2: Open Razorpay Checkout for remaining balance
-      if (!window.Razorpay) {
-        alert('Payment gateway not loaded. Please refresh and try again.');
+      if (!razorpayLoaded || !window.Razorpay) {
+        alert('Payment gateway is loading. Please wait a moment and try again.');
         setIsProcessing(false);
         return;
       }

@@ -122,6 +122,15 @@ export async function createReturnRequest(data: { orderId: string; reason: strin
     throw new Error("Order not found or unauthorized");
   }
 
+  // Check if a return request already exists for this order
+  const existingReturn = await prisma.returnRequest.findFirst({
+    where: { orderId: data.orderId },
+  });
+
+  if (existingReturn) {
+    throw new Error("A return request has already been submitted for this order.");
+  }
+
   // Create return request
   const returnRequest = await prisma.returnRequest.create({
     data: {

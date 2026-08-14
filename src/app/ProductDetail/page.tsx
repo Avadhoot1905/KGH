@@ -72,15 +72,23 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <span className="tag red">{product.quantity > 0 ? "In Stock" : "Out of Stock"}</span>
             </div>
             <h1 className="product-title">{product.name}</h1>
-            <p className="rating">★★★★★ <span>({product.totalReviews} reviews)</span></p>
+            <p className="rating">
+              {"★".repeat(Math.round(product.averageRating || 5)) + "☆".repeat(5 - Math.round(product.averageRating || 5))} <span>({product.totalReviews || 0} reviews)</span>
+            </p>
             <p className="price">{formatINR(product.price)}</p>
 
             <div className="spec-box">
               <h3>SPECIFICATIONS</h3>
               <ul>
-                <li><strong>Caliber:</strong> {product.calibers.map(c => c.name).join(", ")}</li>
-                <li><strong>Brand:</strong> {product.brands.map(b => b.name).join(", ")}</li>
-                <li><strong>Type:</strong> {product.types.map(t => t.name).join(", ")}</li>
+                {product.calibers.map(c => c.name).filter(Boolean).length > 0 && (
+                  <li><strong>Caliber:</strong> {product.calibers.map(c => c.name).filter(Boolean).join(", ")}</li>
+                )}
+                {product.brands.map(b => b.name).filter(Boolean).length > 0 && (
+                  <li><strong>Brand:</strong> {product.brands.map(b => b.name).filter(Boolean).join(", ")}</li>
+                )}
+                {product.types.map(t => t.name).filter(Boolean).length > 0 && (
+                  <li><strong>Type:</strong> {product.types.map(t => t.name).filter(Boolean).join(", ")}</li>
+                )}
                 <li><strong>License Required:</strong> {product.licenseRequired ? "Yes" : "No"}</li>
               </ul>
             </div>

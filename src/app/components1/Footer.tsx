@@ -85,7 +85,7 @@ export default function Footer() {
 
       {/* === COPYRIGHT === */}
       <div className="text-center text-gray-500 text-xs border-t border-gray-800 mt-8 pt-4">
-        © 2025 Kathuria Gun House. Authorized Service Centre – Precihole Sports.
+        © {new Date().getFullYear()} Kathuria Gun House. Authorized Service Centre – Precihole Sports.
       </div>
     </footer>
   );

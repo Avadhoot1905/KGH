@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -16,9 +16,34 @@ import SearchBar from "./SearchBar";
 import ProtectedLink from "./ProtectedLink";
 import AuthPopup from "./AuthPopup";
 import FeedbackPopup from "./FeedbackPopup";
+import AppointmentPopup from "./AppointmentPopup";
+import { getMyCartItems } from "@/actions/cart";
 
 export default function Navbar() {
   const { data: session } = useSession();
+  const [cartCount, setCartCount] = useState<number>(0);
+
+  useEffect(() => {
+    if (!session?.user) {
+      setCartCount(0);
+      return;
+    }
+    let ignore = false;
+    async function loadCartCount() {
+      try {
+        const items = await getMyCartItems();
+        if (!ignore) {
+          const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
+          setCartCount(totalQty);
+        }
+      } catch {
+        // silent fail
+      }
+    }
+    loadCartCount();
+    return () => { ignore = true; };
+  }, [session?.user]);
+  const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
   const [isComplaintOpen, setIsComplaintOpen] = useState(false);
   const [showAuthPopup, setShowAuthPopup] = useState(false);
 
@@ -100,20 +125,30 @@ export default function Navbar() {
             <FaShoppingCart className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
           </ProtectedLink>
 
-          
-
+          {cartCount > 0 && (
+            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center pointer-events-none">
+              {cartCount > 9 ? "9+" : cartCount}
+            </span>
+          )}
         </div>
-{/* BOOK APPOINTMENT */}
-<div className="relative">
-  <ProtectedLink
-    href="/appointment"
-    title="Book Appointment"
-    authTitle="Sign in to book an appointment"
-    authMessage="Please sign in with Google to book an appointment."
-  >
-    <FaCalendarAlt className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
-  </ProtectedLink>
-</div>
+
+        {/* BOOK APPOINTMENT */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              if (session?.user) {
+                setIsAppointmentOpen(true);
+              } else {
+                setShowAuthPopup(true);
+              }
+            }}
+            title="Book Appointment"
+            className="focus:outline-none flex items-center"
+          >
+            <FaCalendarAlt className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
+          </button>
+        </div>
+
         {/* COMPLAINTS */}
         <div className="relative">
           <button
@@ -140,8 +175,20 @@ export default function Navbar() {
         >
           <FaUser className="text-xl md:text-lg cursor-pointer hover:text-[#b5333c] transition" />
         </ProtectedLink>
+
+        {/* ADMIN PANEL (Only visible to authenticated users with ADMIN role) */}
+        {session?.user && (session.user as { role?: string }).role === "ADMIN" && (
+          <Link href="/mod" title="Admin Panel">
+            <span className="bg-red-600 hover:bg-red-700 text-white text-xs font-bold px-2 py-1 rounded transition cursor-pointer">
+              ADMIN
+            </span>
+          </Link>
+        )}
       </div>
 
+      {isAppointmentOpen && (
+        <AppointmentPopup onClose={() => setIsAppointmentOpen(false)} />
+      )}
       {isComplaintOpen && (
         <FeedbackPopup onClose={() => setIsComplaintOpen(false)} initialType="COMPLAINT" />
       )}

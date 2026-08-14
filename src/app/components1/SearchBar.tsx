@@ -73,7 +73,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
       setIsOpen(search.length > 0);
       setHighlightIndex(0);
       setAutoText(search[0]?.name ?? "");
-    }, 2000);
+    }, 200);
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current);
     };
