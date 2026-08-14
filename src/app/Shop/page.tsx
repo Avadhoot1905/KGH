@@ -398,7 +398,7 @@ function ShopContent() {
                           <p>{subtitle}</p>
                           <div className="product-card-bottom">
                             <h3>{formatINR(product.price)}</h3>
-                            <QuickAddToCartButton productId={product.id} licenseRequired={product.licenseRequired} />
+                            <QuickAddToCartButton productId={product.id} licenseRequired={product.licenseRequired} productQuantity={product.quantity} />
                           </div>
                         </Link>
                       </div>

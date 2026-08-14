@@ -354,7 +354,7 @@ export default function ProfilePage() {
                                   ) : (order.status === "PENDING" || order.status === "PAID" || order.status === "SHIPPED") ? (
                                     order.trackingUrl ? (
                                       <a
-                                        href={order.trackingUrl}
+                                        href={order.trackingUrl.startsWith("http://") || order.trackingUrl.startsWith("https://") ? order.trackingUrl : `https://${order.trackingUrl}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="bg-red-600 hover:bg-red-700 text-white text-sm px-3 py-2 rounded-2xl font-medium inline-block text-center"
@@ -380,7 +380,7 @@ export default function ProfilePage() {
                               {order.trackingUrl && (
                                 <p className="mt-1">
                                   <a
-                                    href={order.trackingUrl}
+                                    href={order.trackingUrl.startsWith("http://") || order.trackingUrl.startsWith("https://") ? order.trackingUrl : `https://${order.trackingUrl}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="text-red-500 hover:text-red-400 underline font-semibold inline-flex items-center gap-1"

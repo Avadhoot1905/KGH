@@ -9,9 +9,10 @@ import { FaShoppingCart, FaPlus, FaMinus } from "react-icons/fa";
 type QuickAddToCartButtonProps = {
   productId: string;
   licenseRequired?: boolean;
+  productQuantity?: number;
 };
 
-function QuickAddToCartInner({ productId, licenseRequired }: QuickAddToCartButtonProps) {
+function QuickAddToCartInner({ productId, licenseRequired, productQuantity }: QuickAddToCartButtonProps) {
   const [quantity, setQuantity] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -56,10 +57,20 @@ function QuickAddToCartInner({ productId, licenseRequired }: QuickAddToCartButto
     try {
       const result = await updateProductQuantityInCart(productId, delta);
       setQuantity(result.quantity ?? 0);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update cart");
     } finally {
       setUpdating(false);
     }
   };
+
+  if (typeof productQuantity === "number" && productQuantity <= 0) {
+    return (
+      <span className="text-[10px] uppercase tracking-wider font-semibold text-gray-400 bg-gray-900 px-2 py-1 rounded border border-gray-800">
+        Out of Stock
+      </span>
+    );
+  }
 
   if (licenseRequired) {
     return (

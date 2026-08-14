@@ -6,6 +6,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { isAdmin } from "@/lib/adminAuth";
 import { revalidatePath } from "next/cache";
+import Razorpay from "razorpay";
 
 interface TestimonialOutput {
   id: string;
@@ -242,7 +243,7 @@ export async function getAllReturnRequests(): Promise<ReturnRequestOutput[]> {
   }));
 }
 
-// Admin: Update return request status
+// Admin: Update return request status & process automatic Razorpay refund when approved
 export async function updateReturnRequestStatus(requestId: string, status: ReturnStatus) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) {
@@ -260,12 +261,48 @@ export async function updateReturnRequestStatus(requestId: string, status: Retur
   });
 
   // Update original order status accordingly
-  const orderStatus = status === "APPROVED" ? "RETURNED" : "DELIVERED";
-  await prisma.order.update({
-    where: { id: returnReq.orderId },
-    data: { status: orderStatus },
-  });
-
   revalidatePath("/profile");
   return returnReq;
+}
+
+// Admin: Process direct Razorpay refund API call for approved return request
+export async function processRazorpayRefundAction(orderId: string) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) throw new Error("Unauthorized");
+
+  const userIsAdmin = await isAdmin(session.user.email);
+  if (!userIsAdmin) throw new Error("Forbidden");
+
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: { payment: true },
+  });
+
+  if (!order || !order.payment?.razorpayPaymentId) {
+    throw new Error("No captured Razorpay payment found for this order.");
+  }
+
+  const razorpayKeyId = process.env.RAZORPAY_KEY_ID;
+  const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!razorpayKeyId || !razorpayKeySecret) {
+    throw new Error("Razorpay credentials not configured on server.");
+  }
+
+  const razorpay = new Razorpay({
+    key_id: razorpayKeyId,
+    key_secret: razorpayKeySecret,
+  });
+
+  const refundAmountPaise = Math.round(order.total * 100);
+  const refund = await razorpay.payments.refund(order.payment.razorpayPaymentId, {
+    amount: refundAmountPaise,
+    notes: {
+      reason: `Return Request Approved for Order ${order.id}`,
+      orderId: order.id,
+    },
+  });
+
+  revalidatePath("/mod");
+  return { success: true, refundId: refund.id };
 }

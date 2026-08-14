@@ -10,6 +10,7 @@ type AddToCartButtonProps = {
   disabled?: boolean;
   className?: string;
   licenseRequired?: boolean;
+  productQuantity?: number;
 };
 
 // Reusable animated target/crosshair spinner matching the shooting theme
@@ -23,7 +24,7 @@ function TargetLoader({ className = "w-4 h-4" }: { className?: string }) {
   );
 }
 
-function AddToCartButtonInner({ productId, disabled, className = "red", licenseRequired }: AddToCartButtonProps) {
+function AddToCartButtonInner({ productId, disabled, className = "red", licenseRequired, productQuantity }: AddToCartButtonProps) {
   const [quantity, setQuantity] = useState<number>(0);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -68,10 +69,20 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
     try {
       const result = await updateProductQuantityInCart(productId, delta);
       setQuantity(result.quantity ?? 0);
+    } catch (err) {
+      alert(err instanceof Error ? err.message : "Failed to update cart");
     } finally {
       setUpdating(false);
     }
   };
+
+  if (typeof productQuantity === "number" && productQuantity <= 0) {
+    return (
+      <button className={`${className} opacity-50 cursor-not-allowed`} disabled style={{ padding: "8px 16px", borderRadius: "4px" }}>
+        Out of Stock
+      </button>
+    );
+  }
 
   if (licenseRequired) {
     return (

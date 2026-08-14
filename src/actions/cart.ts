@@ -21,17 +21,28 @@ export async function addToCart(productId: string, quantity: number = 1) {
     throw new Error("PRODUCT_NOT_FOUND");
   }
 
+  if (product.quantity <= 0) {
+    throw new Error("OUT_OF_STOCK");
+  }
+
   // Upsert cart item (increment quantity if already exists)
   const existing = await prisma.cart.findFirst({ where: { userId, productId } });
+  const currentQty = existing?.quantity ?? 0;
+  const targetQty = currentQty + quantity;
+
+  if (targetQty > product.quantity) {
+    throw new Error(`MAX_STOCK_EXCEEDED: Cannot add more than available stock (${product.quantity})`);
+  }
+
   if (existing) {
     return prisma.cart.update({
       where: { id: existing.id },
-      data: { quantity: existing.quantity + quantity },
+      data: { quantity: targetQty },
     });
   }
 
   return prisma.cart.create({
-    data: { userId, productId, quantity },
+    data: { userId, productId, quantity: targetQty },
   });
 }
 
@@ -64,10 +75,14 @@ export async function updateProductQuantityInCart(productId: string, delta: numb
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) throw new Error("UNAUTHENTICATED");
 
+  const product = await prisma.product.findUnique({ where: { id: productId }, select: { quantity: true } });
+  if (!product) throw new Error("PRODUCT_NOT_FOUND");
+
   const existing = await prisma.cart.findFirst({ where: { userId: user.id, productId } });
 
   if (!existing) {
     if (delta <= 0) return { quantity: 0 };
+    if (product.quantity <= 0) throw new Error("OUT_OF_STOCK");
     await prisma.cart.create({ data: { userId: user.id, productId, quantity: 1 } });
     return { quantity: 1 };
   }
@@ -77,6 +92,10 @@ export async function updateProductQuantityInCart(productId: string, delta: numb
   if (nextQty <= 0) {
     await prisma.cart.delete({ where: { id: existing.id } });
     return { quantity: 0 };
+  }
+
+  if (nextQty > product.quantity) {
+    throw new Error(`MAX_STOCK_EXCEEDED: Maximum available stock is ${product.quantity}`);
   }
 
   await prisma.cart.update({ where: { id: existing.id }, data: { quantity: nextQty } });

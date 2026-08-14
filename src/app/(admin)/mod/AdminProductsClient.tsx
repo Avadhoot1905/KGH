@@ -6,7 +6,8 @@ import {
   getAllFeedbacks, 
   updateFeedbackShowOnHome, 
   getAllReturnRequests, 
-  updateReturnRequestStatus
+  updateReturnRequestStatus,
+  processRazorpayRefundAction
 } from "@/actions/feedbackAndReturns";
 import { ReturnStatus } from "@prisma/client";
 import dynamic from "next/dynamic";
@@ -35,6 +36,31 @@ const AdminAppointmentsButton = dynamic(() => import("@/app/components1/AdminApp
 type AdminProductsClientProps = {
   products: ProductListItem[];
 };
+
+function ReturnCountdownTimer({ createdAt }: { createdAt: Date | string }) {
+  const [timeLeft, setTimeLeft] = useState<number>(300);
+
+  useEffect(() => {
+    const startTime = new Date(createdAt).getTime();
+    const interval = setInterval(() => {
+      const elapsed = Math.floor((Date.now() - startTime) / 1000);
+      const remaining = Math.max(0, 300 - elapsed);
+      setTimeLeft(remaining);
+      if (remaining <= 0) clearInterval(interval);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [createdAt]);
+
+  const mins = Math.floor(timeLeft / 60);
+  const secs = timeLeft % 60;
+
+  return (
+    <span className="font-mono text-yellow-300 bg-yellow-950/60 px-2 py-0.5 rounded border border-yellow-700/50">
+      {timeLeft > 0 ? `⏱ ${mins}:${secs < 10 ? "0" : ""}${secs}` : "Window Complete"}
+    </span>
+  );
+}
 
 type AdminOrderSummary = {
   id: string;
@@ -232,8 +258,13 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
     }
   };
 
+  const [approvedTimestamps, setApprovedTimestamps] = useState<Record<string, Date>>({});
+
   const handleReturnStatusUpdate = async (requestId: string, nextStatus: string) => {
     try {
+      if (nextStatus === "APPROVED") {
+        setApprovedTimestamps((prev) => ({ ...prev, [requestId]: new Date() }));
+      }
       await updateReturnStatus(requestId, nextStatus as ReturnStatus);
       setReturns((current) => current.map((r) => r.id === requestId ? { ...r, status: nextStatus as ReturnStatus } : r));
     } catch (err) {
@@ -769,18 +800,59 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
                       )}
                     </div>
 
-                    <label className="block text-xs uppercase tracking-wide text-gray-500">
-                      Update Return Status
-                      <select
-                        value={req.status}
-                        onChange={(event) => void handleReturnStatusUpdate(req.id, event.target.value)}
-                        className="mt-2 w-full rounded border border-[#333] bg-[#0f0f0f] px-3 py-2 text-sm text-white cursor-pointer"
-                      >
-                        <option value="PENDING">PENDING</option>
-                        <option value="APPROVED">APPROVED (Refunded / Returned)</option>
-                        <option value="REJECTED">REJECTED (Declined)</option>
-                      </select>
-                    </label>
+                    <div className="space-y-3">
+                      <label className="block text-xs uppercase tracking-wide text-gray-500">
+                        Update Return Status
+                        <select
+                          value={req.status}
+                          onChange={(event) => void handleReturnStatusUpdate(req.id, event.target.value)}
+                          className="mt-2 w-full rounded border border-[#333] bg-[#0f0f0f] px-3 py-2 text-sm text-white cursor-pointer"
+                        >
+                          <option value="PENDING">PENDING</option>
+                          <option value="APPROVED">APPROVED (Awaiting Final Confirmation / 5m Window)</option>
+                          <option value="REJECTED">REJECTED (Declined)</option>
+                        </select>
+                      </label>
+
+                      {req.status === "APPROVED" && (
+                        <div className="p-3 rounded-lg bg-yellow-950/30 border border-yellow-800/40 text-xs space-y-2">
+                          <p className="text-yellow-400 font-semibold flex items-center justify-between">
+                            <span>Status: Approved (5-min window)</span>
+                            <ReturnCountdownTimer createdAt={approvedTimestamps[req.id] || req.createdAt} />
+                          </p>
+                          <p className="text-gray-400">
+                            The return request is marked approved. You can revert this status if marked by mistake, or confirm to trigger the Razorpay API refund immediately.
+                          </p>
+                          <div className="flex items-center gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={async () => {
+                                if (confirm("Confirm approval & trigger immediate Razorpay refund for this order?")) {
+                                  try {
+                                    const res = await processRazorpayRefundAction(req.orderId);
+                                    if (res.success) {
+                                      alert(`Razorpay refund initiated successfully! (Refund ID: ${res.refundId})`);
+                                    }
+                                  } catch (err) {
+                                    alert(err instanceof Error ? err.message : "Failed to process refund");
+                                  }
+                                }
+                              }}
+                              className="px-3 py-1.5 rounded bg-green-600 hover:bg-green-700 text-white text-xs font-semibold cursor-pointer"
+                            >
+                              Confirm Approval &amp; Refund Now
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => void handleReturnStatusUpdate(req.id, "PENDING")}
+                              className="px-3 py-1.5 rounded border border-gray-700 bg-gray-800 hover:bg-gray-700 text-gray-300 text-xs font-semibold cursor-pointer"
+                            >
+                              Revert to Pending
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>

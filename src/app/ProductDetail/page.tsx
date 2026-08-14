@@ -91,7 +91,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
             </div>
 
             <div className="buttons">
-              <AddToCartButton productId={product.id} licenseRequired={product.licenseRequired} />
+              <AddToCartButton productId={product.id} licenseRequired={product.licenseRequired} productQuantity={product.quantity} />
               <WishlistButton productId={product.id} />
               <ShareButton title={product.name} url={`https://buyairgunsindia.in/ProductDetail/${product.id}`} />
             </div>
