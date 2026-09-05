@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { getAuthState } from "@/actions/auth";
-import { getCartQuantityForProduct, updateProductQuantityInCart } from "@/actions/cart";
+import { useSession } from "next-auth/react";
+import { useCartWishlist } from "@/app/context/CartWishlistContext";
 
 type AddToCartButtonProps = {
   productId: string;
@@ -25,38 +25,19 @@ function TargetLoader({ className = "w-4 h-4" }: { className?: string }) {
 }
 
 function AddToCartButtonInner({ productId, disabled, className = "red", licenseRequired, productQuantity }: AddToCartButtonProps) {
-  const [quantity, setQuantity] = useState<number>(0);
-  const [loading, setLoading] = useState(true);
+  const { getCartQuantity, updateCartQuantity, loading } = useCartWishlist();
+  const { status } = useSession();
   const [updating, setUpdating] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
 
-  useEffect(() => {
-    let ignore = false;
-
-    async function loadQuantity() {
-      try {
-        const result = await getCartQuantityForProduct(productId);
-        if (!ignore) {
-          setQuantity(result.quantity ?? 0);
-        }
-      } finally {
-        if (!ignore) setLoading(false);
-      }
-    }
-
-    loadQuantity();
-    return () => {
-      ignore = true;
-    };
-  }, [productId]);
+  const quantity = getCartQuantity(productId);
 
   const handleQuantityChange = async (delta: number) => {
     if (disabled || updating) return;
 
-    const auth = await getAuthState();
-    if (!auth.isAuthenticated) {
+    if (status !== "authenticated") {
       const current = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
       const url = new URL(window.location.href);
       url.searchParams.set("authRequired", "1");
@@ -67,8 +48,7 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
 
     setUpdating(true);
     try {
-      const result = await updateProductQuantityInCart(productId, delta);
-      setQuantity(result.quantity ?? 0);
+      await updateCartQuantity(productId, delta);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update cart");
     } finally {

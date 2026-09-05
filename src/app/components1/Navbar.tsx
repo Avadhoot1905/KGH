@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import {
@@ -17,32 +17,11 @@ import ProtectedLink from "./ProtectedLink";
 import AuthPopup from "./AuthPopup";
 import FeedbackPopup from "./FeedbackPopup";
 import AppointmentPopup from "./AppointmentPopup";
-import { getMyCartItems } from "@/actions/cart";
+import { useCartWishlist } from "@/app/context/CartWishlistContext";
 
 export default function Navbar() {
   const { data: session } = useSession();
-  const [cartCount, setCartCount] = useState<number>(0);
-
-  useEffect(() => {
-    if (!session?.user) {
-      setCartCount(0);
-      return;
-    }
-    let ignore = false;
-    async function loadCartCount() {
-      try {
-        const items = await getMyCartItems();
-        if (!ignore) {
-          const totalQty = items.reduce((sum, item) => sum + item.quantity, 0);
-          setCartCount(totalQty);
-        }
-      } catch {
-        // silent fail
-      }
-    }
-    loadCartCount();
-    return () => { ignore = true; };
-  }, [session?.user]);
+  const { cartCount } = useCartWishlist();
   const [isAppointmentOpen, setIsAppointmentOpen] = useState(false);
   const [isComplaintOpen, setIsComplaintOpen] = useState(false);
   const [showAuthPopup, setShowAuthPopup] = useState(false);

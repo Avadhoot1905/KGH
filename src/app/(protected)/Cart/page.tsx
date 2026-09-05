@@ -13,6 +13,7 @@ import Image from 'next/image';
 import Script from 'next/script';
 import { useSession } from 'next-auth/react';
 import ProfileCompletionModal from '@/components/ProfileCompletionModal';
+import { useCartWishlist } from '@/app/context/CartWishlistContext';
 
 interface CartItem {
   id: string | number;
@@ -66,6 +67,7 @@ declare global {
 export default function Cart() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshCartAndWishlist } = useCartWishlist();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [useWallet, setUseWallet] = useState<boolean>(false);
@@ -447,6 +449,7 @@ export default function Cart() {
                   try {
                     await moveCartItemToWishlist(pendingRemoveItem.id, pendingRemoveItem.productId);
                     setCartItems((prev) => prev.filter((p) => p.id !== pendingRemoveItem.id));
+                    void refreshCartAndWishlist();
                   } catch (err) {
                     console.error(err);
                   } finally {
@@ -468,6 +471,7 @@ export default function Cart() {
                   try {
                     await removeCartItem(pendingRemoveItem.id);
                     setCartItems((prev) => prev.filter((p) => p.id !== pendingRemoveItem.id));
+                    void refreshCartAndWishlist();
                   } catch (err) {
                     console.error(err);
                   } finally {

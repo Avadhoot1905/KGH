@@ -46,6 +46,25 @@ export async function addToCart(productId: string, quantity: number = 1) {
   });
 }
 
+export async function getCartQuantitiesMap(): Promise<Record<string, number>> {
+  const session = await getServerSession(authOptions);
+  const email = session?.user?.email ?? null;
+  if (!email) return {};
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) return {};
+
+  const entries = await prisma.cart.findMany({
+    where: { userId: user.id },
+    select: { productId: true, quantity: true },
+  });
+
+  const map: Record<string, number> = {};
+  for (const item of entries) {
+    map[item.productId] = item.quantity;
+  }
+  return map;
+}
+
 export async function getCartQuantityForProduct(productId: string) {
   if (!productId) throw new Error("productId is required");
 
@@ -53,7 +72,7 @@ export async function getCartQuantityForProduct(productId: string) {
   const email = session?.user?.email ?? null;
   if (!email) return { quantity: 0 };
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (!user) return { quantity: 0 };
 
   const existing = await prisma.cart.findFirst({
@@ -72,13 +91,13 @@ export async function updateProductQuantityInCart(productId: string, delta: numb
   const email = session?.user?.email ?? null;
   if (!email) throw new Error("UNAUTHENTICATED");
 
-  const user = await prisma.user.findUnique({ where: { email } });
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (!user) throw new Error("UNAUTHENTICATED");
 
   const product = await prisma.product.findUnique({ where: { id: productId }, select: { quantity: true } });
   if (!product) throw new Error("PRODUCT_NOT_FOUND");
 
-  const existing = await prisma.cart.findFirst({ where: { userId: user.id, productId } });
+  const existing = await prisma.cart.findFirst({ where: { userId: user.id, productId }, select: { id: true, quantity: true } });
 
   if (!existing) {
     if (delta <= 0) return { quantity: 0 };

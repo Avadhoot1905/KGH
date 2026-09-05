@@ -8,6 +8,7 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { FaShoppingCart, FaTrash } from "react-icons/fa";
+import { useCartWishlist } from "@/app/context/CartWishlistContext";
 
 interface WishlistItem {
   id: string;
@@ -28,6 +29,7 @@ interface Recommendation {
 }
 
 export default function WishlistPage() {
+  const { refreshCartAndWishlist } = useCartWishlist();
   const [wishlist, setWishlist] = useState<WishlistItem[]>([]);
   const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,6 +83,7 @@ export default function WishlistPage() {
               await moveAllWishlistToCart();
               setWishlist([]);
               setRecommendations([]);
+              void refreshCartAndWishlist();
             }}
           >
             Move All to Cart
@@ -121,6 +124,7 @@ export default function WishlistPage() {
                   onClick={async () => {
                     await moveWishlistItemToCart(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                    void refreshCartAndWishlist();
                     // Refresh recommendations
                     const recs = await getWishlistRecommendations();
                     setRecommendations(recs as unknown as Recommendation[]);
@@ -134,6 +138,7 @@ export default function WishlistPage() {
                   onClick={async () => {
                     await removeFromMyWishlist(String(item.id));
                     setWishlist((prev) => prev.filter((w) => w.id !== item.id));
+                    void refreshCartAndWishlist();
                     // Refresh recommendations
                     const recs = await getWishlistRecommendations();
                     setRecommendations(recs as unknown as Recommendation[]);
