@@ -85,9 +85,11 @@ export default async function Home() {
           src="/photos/hero.png"
           alt="Hero banner"
           fill
+          priority
+          quality={90}
+          sizes="100vw"
           className="absolute inset-0 z-0 w-full h-full object-cover object-center"
           style={{ filter: 'brightness(1.05) contrast(1.02)' }}
-          priority
         />
 
         {/* Dark overlay for readability (temporarily reduced for debugging) */}

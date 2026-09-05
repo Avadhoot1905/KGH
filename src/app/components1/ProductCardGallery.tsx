@@ -56,7 +56,8 @@ export default function ProductCardGallery({
         src={activePhoto.url}
         alt={activePhoto.alt ?? productName}
         fill
-        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+        quality={85}
+        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 33vw, 280px"
         className="object-contain p-2 transition-transform duration-300 hover:scale-105"
       />
 
