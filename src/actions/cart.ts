@@ -46,63 +46,66 @@ export async function addToCart(productId: string, quantity: number = 1) {
   });
 }
 
-export async function getCartQuantitiesMap(): Promise<Record<string, number>> {
+async function getUserIdFromSession(): Promise<string> {
   const session = await getServerSession(authOptions);
+  const sessionUserId = (session?.user as { id?: string })?.id;
+  if (sessionUserId) return sessionUserId;
+
   const email = session?.user?.email ?? null;
-  if (!email) return {};
+  if (!email) throw new Error("UNAUTHENTICATED");
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) return {};
+  if (!user) throw new Error("UNAUTHENTICATED");
+  return user.id;
+}
 
-  const entries = await prisma.cart.findMany({
-    where: { userId: user.id },
-    select: { productId: true, quantity: true },
-  });
+export async function getCartQuantitiesMap(): Promise<Record<string, number>> {
+  try {
+    const userId = await getUserIdFromSession();
+    const entries = await prisma.cart.findMany({
+      where: { userId },
+      select: { productId: true, quantity: true },
+    });
 
-  const map: Record<string, number> = {};
-  for (const item of entries) {
-    map[item.productId] = item.quantity;
+    const map: Record<string, number> = {};
+    for (const item of entries) {
+      map[item.productId] = item.quantity;
+    }
+    return map;
+  } catch {
+    return {};
   }
-  return map;
 }
 
 export async function getCartQuantityForProduct(productId: string) {
   if (!productId) throw new Error("productId is required");
 
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
-  if (!email) return { quantity: 0 };
-
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) return { quantity: 0 };
-
-  const existing = await prisma.cart.findFirst({
-    where: { userId: user.id, productId },
-    select: { quantity: true },
-  });
-
-  return { quantity: existing?.quantity ?? 0 };
+  try {
+    const userId = await getUserIdFromSession();
+    const existing = await prisma.cart.findFirst({
+      where: { userId, productId },
+      select: { quantity: true },
+    });
+    return { quantity: existing?.quantity ?? 0 };
+  } catch {
+    return { quantity: 0 };
+  }
 }
 
 export async function updateProductQuantityInCart(productId: string, delta: number) {
   if (!productId) throw new Error("productId is required");
   if (!delta) return { quantity: 0 };
 
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
-  if (!email) throw new Error("UNAUTHENTICATED");
-
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) throw new Error("UNAUTHENTICATED");
+  const userId = await getUserIdFromSession();
 
   const product = await prisma.product.findUnique({ where: { id: productId }, select: { quantity: true } });
   if (!product) throw new Error("PRODUCT_NOT_FOUND");
 
-  const existing = await prisma.cart.findFirst({ where: { userId: user.id, productId }, select: { id: true, quantity: true } });
+  const existing = await prisma.cart.findFirst({ where: { userId, productId }, select: { id: true, quantity: true } });
 
   if (!existing) {
     if (delta <= 0) return { quantity: 0 };
     if (product.quantity <= 0) throw new Error("OUT_OF_STOCK");
-    await prisma.cart.create({ data: { userId: user.id, productId, quantity: 1 } });
+    await prisma.cart.create({ data: { userId, productId, quantity: 1 } });
     return { quantity: 1 };
   }
 

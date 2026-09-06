@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { Suspense } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCartWishlist } from "@/app/context/CartWishlistContext";
@@ -15,7 +15,6 @@ type WishlistButtonProps = {
 function WishlistButtonInner({ productId }: WishlistButtonProps) {
   const { isWishlisted: checkIsWishlisted, toggleWishlist, loading } = useCartWishlist();
   const { status } = useSession();
-  const [saving, setSaving] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -32,29 +31,21 @@ function WishlistButtonInner({ productId }: WishlistButtonProps) {
       return;
     }
 
-    setSaving(true);
     try {
       await toggleWishlist(productId);
     } catch (err) {
       console.error("Wishlist toggle error:", err);
-    } finally {
-      setSaving(false);
     }
   };
 
   return (
     <button 
-      className={`wishlist-detail-btn ${wishlisted ? "active" : ""} ${saving ? "saving" : ""}`} 
+      className={`wishlist-detail-btn ${wishlisted ? "active" : ""}`} 
       onClick={onToggleWishlist} 
       aria-pressed={wishlisted}
       disabled={loading}
     >
-      {saving ? (
-        <>
-          <FaSpinner className="animate-spin" />
-          <span>Saving...</span>
-        </>
-      ) : wishlisted ? (
+      {wishlisted ? (
         <>
           <FaHeart className="heart-icon active" />
           <span>Wishlisted</span>

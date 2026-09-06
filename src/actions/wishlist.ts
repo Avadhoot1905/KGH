@@ -5,35 +5,40 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function getWishlistProductIds(): Promise<string[]> {
+async function getUserIdFromSession(): Promise<string> {
   const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
-  if (!email) return [];
-  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
-  if (!user) return [];
+  const sessionUserId = (session?.user as { id?: string })?.id;
+  if (sessionUserId) return sessionUserId;
 
-  const entries = await prisma.wishlist.findMany({
-    where: { userId: user.id },
-    select: { productId: true },
-  });
-
-  return entries.map((w) => w.productId);
-}
-
-export async function toggleWishlist(productId: string) {
-  if (!productId) throw new Error("productId is required");
-
-  const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
   if (!email) throw new Error("UNAUTHENTICATED");
   const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
   if (!user) throw new Error("UNAUTHENTICATED");
-  const userId = user.id;
+  return user.id;
+}
+
+export async function getWishlistProductIds(): Promise<string[]> {
+  try {
+    const userId = await getUserIdFromSession();
+    const entries = await prisma.wishlist.findMany({
+      where: { userId },
+      select: { productId: true },
+    });
+    return entries.map((w) => w.productId);
+  } catch {
+    return [];
+  }
+}
+
+export async function toggleWishlist(productId: string) {
+  if (!productId) throw new Error("productId is required");
+  const userId = await getUserIdFromSession();
 
   const existing = await prisma.wishlist.findFirst({
     where: { userId, productId },
     select: { id: true },
   });
+
   if (existing) {
     await prisma.wishlist.delete({ where: { id: existing.id } });
     return { wishlisted: false } as const;

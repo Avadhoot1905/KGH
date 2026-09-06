@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { Suspense } from "react";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import { useCartWishlist } from "@/app/context/CartWishlistContext";
@@ -27,7 +27,6 @@ function TargetLoader({ className = "w-4 h-4" }: { className?: string }) {
 function AddToCartButtonInner({ productId, disabled, className = "red", licenseRequired, productQuantity }: AddToCartButtonProps) {
   const { getCartQuantity, updateCartQuantity, loading } = useCartWishlist();
   const { status } = useSession();
-  const [updating, setUpdating] = useState(false);
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -35,7 +34,7 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
   const quantity = getCartQuantity(productId);
 
   const handleQuantityChange = async (delta: number) => {
-    if (disabled || updating) return;
+    if (disabled) return;
 
     if (status !== "authenticated") {
       const current = pathname + (searchParams?.toString() ? `?${searchParams.toString()}` : "");
@@ -46,13 +45,10 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
       return;
     }
 
-    setUpdating(true);
     try {
       await updateCartQuantity(productId, delta);
     } catch (err) {
       alert(err instanceof Error ? err.message : "Failed to update cart");
-    } finally {
-      setUpdating(false);
     }
   };
 
@@ -86,18 +82,11 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
       <button
         type="button"
         onClick={() => handleQuantityChange(1)}
-        disabled={disabled || updating}
+        disabled={disabled}
         className={`${className} flex items-center justify-center gap-1.5`}
         style={{ padding: "8px 16px", borderRadius: "4px", fontWeight: "bold" }}
       >
-        {updating ? (
-          <>
-            <TargetLoader />
-            <span>Adding...</span>
-          </>
-        ) : (
-          "Add to Cart"
-        )}
+        Add to Cart
       </button>
     );
   }
@@ -107,19 +96,19 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
       <button
         type="button"
         onClick={() => handleQuantityChange(-1)}
-        disabled={disabled || updating || quantity <= 0}
+        disabled={disabled || quantity <= 0}
         className={className}
         style={{ minWidth: 38, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         −
       </button>
       <span style={{ minWidth: 24, textAlign: "center", fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center" }}>
-        {updating ? <TargetLoader /> : quantity}
+        {quantity}
       </span>
       <button
         type="button"
         onClick={() => handleQuantityChange(1)}
-        disabled={disabled || updating}
+        disabled={disabled}
         className={className}
         style={{ minWidth: 38, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
