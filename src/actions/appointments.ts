@@ -35,29 +35,30 @@ export type AppointmentData = {
   };
 };
 
+async function getUserIdFromSession(): Promise<string> {
+  const session = await getServerSession(authOptions);
+  const sessionUserId = (session?.user as { id?: string })?.id;
+  if (sessionUserId) return sessionUserId;
+
+  const email = session?.user?.email ?? null;
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+  return user.id;
+}
+
 // User: Create an appointment
 export async function createAppointment(data: {
   date: string;
   time: string;
   reason: string;
 }) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    throw new Error("Unauthorized");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) {
-    throw new Error("User not found");
-  }
+  const userId = await getUserIdFromSession();
 
   // Check if user already has a pending or approved appointment
   const existingAppointment = await prisma.appointment.findFirst({
     where: {
-      userId: user.id,
+      userId,
       status: {
         in: ["PENDING", "APPROVED"],
       },
@@ -70,7 +71,7 @@ export async function createAppointment(data: {
 
   const appointment = await prisma.appointment.create({
     data: {
-      userId: user.id,
+      userId,
       date: data.date,
       time: data.time,
       reason: data.reason,
@@ -93,58 +94,39 @@ export async function createAppointment(data: {
 
 // User: Get their own appointment
 export async function getUserAppointment() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    return null;
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) {
-    return null;
-  }
-
-  const appointment = await prisma.appointment.findFirst({
-    where: {
-      userId: user.id,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    include: {
-      user: {
-        select: {
-          id: true,
-          name: true,
-          email: true,
+  try {
+    const userId = await getUserIdFromSession();
+    const appointment = await prisma.appointment.findFirst({
+      where: {
+        userId,
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+          },
         },
       },
-    },
-  });
+    });
 
-  return appointment as AppointmentData | null;
+    return appointment as AppointmentData | null;
+  } catch {
+    return null;
+  }
 }
 
 // User: Cancel their appointment
 export async function cancelAppointment() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.email) {
-    throw new Error("Unauthorized");
-  }
-
-  const user = await prisma.user.findUnique({
-    where: { email: session.user.email },
-  });
-
-  if (!user) {
-    throw new Error("User not found");
-  }
+  const userId = await getUserIdFromSession();
 
   const appointment = await prisma.appointment.findFirst({
     where: {
-      userId: user.id,
+      userId,
     },
     orderBy: {
       createdAt: "desc",

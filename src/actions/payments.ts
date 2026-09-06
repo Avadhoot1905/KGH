@@ -11,12 +11,26 @@ import { prisma } from "@/lib/prisma";
 export async function checkUserAuthentication() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) {
+    const sessionUserId = (session?.user as { id?: string })?.id;
+    const email = session?.user?.email ?? null;
+    
+    if (!email) {
       return { authenticated: false, user: null };
     }
 
+    if (sessionUserId) {
+      return {
+        authenticated: true,
+        user: {
+          id: sessionUserId,
+          email,
+          name: session?.user?.name ?? null,
+        },
+      };
+    }
+
     const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
+      where: { email },
       select: {
         id: true,
         email: true,
@@ -35,23 +49,23 @@ export async function checkUserAuthentication() {
   }
 }
 
-/**
- * Get user's cart count for UI display
- */
 export async function getCartCount() {
   try {
     const session = await getServerSession(authOptions);
-    if (!session?.user?.email) return 0;
+    const sessionUserId = (session?.user as { id?: string })?.id;
+    let userId = sessionUserId;
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) return 0;
+    if (!userId) {
+      const email = session?.user?.email ?? null;
+      if (!email) return 0;
+      const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+      if (!user) return 0;
+      userId = user.id;
+    }
 
     const count = await prisma.cart.count({
       where: {
-        userId: user.id,
+        userId,
         removedAt: null,
       },
     });
