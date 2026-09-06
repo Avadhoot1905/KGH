@@ -24,7 +24,11 @@ function formatINR(amount: number) {
 
 export default async function ProductDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const product = await getProductById(id);
+  const [product, relatedProducts] = await Promise.all([
+    getProductById(id),
+    getRelatedProductsWithDetails(id),
+  ]);
+
   if (!product) {
     return (
       <div className="product-detail-page">
@@ -36,8 +40,6 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
       </div>
     );
   }
-
-  const relatedProducts = await getRelatedProductsWithDetails(id);
 
   return (
     <div>

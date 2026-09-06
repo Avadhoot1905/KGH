@@ -62,7 +62,15 @@ export async function POST(req: NextRequest) {
         removedAt: null,
       },
       include: {
-        product: true,
+        product: {
+          select: {
+            id: true,
+            name: true,
+            price: true,
+            quantity: true,
+            licenseRequired: true,
+          },
+        },
       },
     });
 

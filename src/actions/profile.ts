@@ -11,30 +11,40 @@ export type ViewedProductItem = {
   img: string;
 };
 
-export async function getRecentlyViewedProducts(limit: number = 8): Promise<ViewedProductItem[]> {
+async function getUserIdFromSession(): Promise<string> {
   const session = await getServerSession(authOptions);
+  const sessionUserId = (session?.user as { id?: string })?.id;
+  if (sessionUserId) return sessionUserId;
+
   const email = session?.user?.email ?? null;
-  if (!email) return [];
+  if (!email) throw new Error("UNAUTHENTICATED");
+  const user = await prisma.user.findUnique({ where: { email }, select: { id: true } });
+  if (!user) throw new Error("UNAUTHENTICATED");
+  return user.id;
+}
 
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return [];
+export async function getRecentlyViewedProducts(limit: number = 8): Promise<ViewedProductItem[]> {
+  try {
+    const userId = await getUserIdFromSession();
+    const products = await prisma.product.findMany({
+      where: { viewedBy: { some: { id: userId } } },
+      include: { photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" } } },
+      orderBy: { updatedAt: "desc" },
+      take: Math.max(1, Math.min(24, limit)),
+    });
 
-  const products = await prisma.product.findMany({
-    where: { viewedBy: { some: { id: user.id } } },
-    include: { photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" } } },
-    orderBy: { updatedAt: "desc" },
-    take: Math.max(1, Math.min(24, limit)),
-  });
-
-  return products.map((p) => {
-    const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
-    return {
-      id: p.id,
-      name: p.name,
-      price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
-      img: primary?.url || "/next.svg",
-    };
-  });
+    return products.map((p) => {
+      const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
+      return {
+        id: p.id,
+        name: p.name,
+        price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
+        img: primary?.url || "/next.svg",
+      };
+    });
+  } catch {
+    return [];
+  }
 }
 
 export type OrderListItem = {
@@ -59,12 +69,8 @@ export type OrderListItem = {
 };
 
 export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANCELLED"): Promise<OrderListItem[]> {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
-  if (!email) return [];
-
-  const user = await prisma.user.findUnique({ where: { email } });
-  if (!user) return [];
+  try {
+    const userId = await getUserIdFromSession();
 
   type PrismaOrder = {
     id: string;
@@ -90,7 +96,7 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const orders = await (prisma as any).order.findMany({
     where: {
-      userId: user.id,
+      userId,
       ...(status && { status })
     },
     include: {
@@ -138,6 +144,9 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
     trackingUrl: order.trackingUrl || null,
     carrier: order.carrier || null,
   }));
+  } catch {
+    return [];
+  }
 }
 
 export async function getAllOrders(): Promise<OrderListItem[]> {
@@ -619,37 +628,31 @@ export async function deleteAddress(addressId: string) {
 }
 
 export async function getUserWalletDetails() {
-  const session = await getServerSession(authOptions);
-  const email = session?.user?.email ?? null;
-  if (!email) return { balance: 0, transactions: [] };
+  try {
+    const userId = await getUserIdFromSession();
 
-  const user = await prisma.user.findUnique({
-    where: { email },
-    include: {
-      orders: {
-        where: { status: "RETURNED" },
-        select: { id: true, total: true, updatedAt: true }
-      }
-    }
-  });
+    const returnedOrders = await prisma.order.findMany({
+      where: { userId, status: "RETURNED" },
+      select: { id: true, total: true, updatedAt: true },
+    });
 
-  if (!user) return { balance: 0, transactions: [] };
+    const returnTransactions = returnedOrders.map((o) => ({
+      id: `TX-${o.id.slice(-6)}`,
+      type: "CREDIT" as const,
+      amount: o.total,
+      description: `Refund Credit for Return Order #${o.id.slice(-6)}`,
+      date: o.updatedAt,
+    }));
 
-  // Calculate balance from returned order credits
-  const returnTransactions = user.orders.map((o) => ({
-    id: `TX-${o.id.slice(-6)}`,
-    type: "CREDIT" as const,
-    amount: o.total,
-    description: `Refund Credit for Return Order #${o.id.slice(-6)}`,
-    date: o.updatedAt,
-  }));
+    const totalBalance = returnTransactions.reduce((sum, tx) => sum + tx.amount, 0);
 
-  const totalBalance = returnTransactions.reduce((sum, tx) => sum + tx.amount, 0);
-
-  return {
-    balance: totalBalance,
-    transactions: returnTransactions,
-  };
+    return {
+      balance: totalBalance,
+      transactions: returnTransactions,
+    };
+  } catch {
+    return { balance: 0, transactions: [] };
+  }
 }
 
 

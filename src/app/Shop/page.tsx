@@ -53,7 +53,6 @@ function ShopContent() {
   const [loading, setLoading] = useState(true);
   const [dbError, setDbError] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [initialLoadDone, setInitialLoadDone] = useState(false);
 
   // Fetch filter options (brands, types, categories) on mount only
   useEffect(() => {
@@ -69,8 +68,6 @@ function ShopContent() {
       } catch (err) {
         console.error("Failed to fetch filter options:", err);
         setDbError(true);
-      } finally {
-        setInitialLoadDone(true);
       }
     }
     fetchFilterOptions();
@@ -79,8 +76,6 @@ function ShopContent() {
   // Fetch products whenever search params change
   useEffect(() => {
     async function fetchProducts() {
-      if (!initialLoadDone) return; // Wait for filter options to load first
-      
       setLoading(true);
       try {
         // Parse URL parameters to build filters
@@ -156,28 +151,6 @@ function ShopContent() {
         // Fetch products with filters
         const productsResult = await getProducts({ filters, page, pageSize: 24 });
 
-        // If a category was selected and no products found, fetch fallback
-        if (categoryParam && productsResult.items.length === 0) {
-          const matched = filtersData.categories.find(
-            (c) =>
-              c.id === categoryParam ||
-              c.name.toLowerCase() === (categoryParam || "").toLowerCase()
-          );
-          if (matched) {
-            const fallback = await getProducts({ filters: {}, page: 1, pageSize: 24 });
-            setFiltersData((prev) => ({
-              ...prev,
-              products: productsResult.items,
-              totalPages: productsResult.totalPages,
-              currentPage: productsResult.page,
-              fallbackProducts: fallback.items,
-              noProductsForCategoryName: matched.name,
-            }));
-            setLoading(false);
-            return;
-          }
-        }
-
         setFiltersData((prev) => ({
           ...prev,
           products: productsResult.items,
@@ -194,7 +167,8 @@ function ShopContent() {
       }
     }
     fetchProducts();
-  }, [searchParams, initialLoadDone, filtersData.categories]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const categoryQuery = searchParams.get("category") || "";
   const matchedCategory = categoryQuery

@@ -25,7 +25,7 @@ import type { PaginatedProducts } from '@/actions/products';
 import { getHomeTestimonials } from '@/actions/feedbackAndReturns';
 import { prisma } from '@/lib/prisma';
 
-export const dynamic = 'force-dynamic';
+export const revalidate = 300;
 
 export default async function Home() {
   let featuredProducts: PaginatedProducts = {
@@ -38,24 +38,17 @@ export default async function Home() {
   let testimonials: Array<{ id: string; content: string; userName: string }> = [];
 
   try {
-    // Fetch active testimonials
-    testimonials = await getHomeTestimonials();
-  } catch (error) {
-    console.warn('Failed to load testimonials:', error instanceof Error ? error.message : String(error));
-  }
+    const [fetchedTestimonials, airgunsCategories] = await Promise.all([
+      getHomeTestimonials(),
+      prisma.category.findMany({
+        where: { name: { contains: 'Air', mode: 'insensitive' } },
+        select: { id: true },
+      }),
+    ]);
 
-  try {
-    // Fetch all categories to find "Air Guns" category ID
-    const airgunsCategories = await prisma.category.findMany({
-      where: {
-        name: {
-          contains: 'Air',
-          mode: 'insensitive',
-        },
-      },
-    });
-
+    testimonials = fetchedTestimonials;
     const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
+
     featuredProducts = await getProducts({
       filters: {
         categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
@@ -64,7 +57,7 @@ export default async function Home() {
       pageSize: 4,
     });
   } catch (error) {
-    console.warn('Failed to load homepage featured products:', error instanceof Error ? error.message : String(error));
+    console.warn('Failed to load homepage data:', error instanceof Error ? error.message : String(error));
   }
   const categories = [
     { name: 'Air Guns', sub: 'Precision & Power', icon: Target },

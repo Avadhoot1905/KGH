@@ -3,6 +3,7 @@
 import { Prisma } from "@prisma/client";
 import { isAdmin } from "@/lib/adminAuth";
 import { prisma } from "@/lib/prisma";
+import { unstable_cache } from "next/cache";
 import fs from "fs/promises";
 import path from "path";
 
@@ -326,12 +327,18 @@ export async function getFilteredProducts(filters?: ProductFilters): Promise<Pro
 }
 
 export async function getFilterOptions() {
-  const [brands, types] = await Promise.all([
-    prisma.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-    prisma.type.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
-  ]);
-  const categories = await prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } });
-  return { brands, types, categories };
+  return unstable_cache(
+    async () => {
+      const [brands, types, categories] = await Promise.all([
+        prisma.brand.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.type.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+        prisma.category.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
+      ]);
+      return { brands, types, categories };
+    },
+    ["filter-options"],
+    { revalidate: 300, tags: ["filter-options"] }
+  )();
 }
 
 export type FilterOptions = {
@@ -389,30 +396,34 @@ export async function searchProductsBrute(query: string): Promise<ProductListIte
 
 // Lightweight search index for client Fuse.js
 export async function getSearchIndex() {
-  const products = await prisma.product.findMany({
-    select: {
-      id: true,
-      name: true,
-      description: true,
-      price: true,
-      brands: { select: { name: true } },
-      types: { select: { name: true } },
-      categories: { select: { name: true } },
-      photos: { select: { url: true, isPrimary: true } },
+  return unstable_cache(
+    async () => {
+      const products = await prisma.product.findMany({
+        select: {
+          id: true,
+          name: true,
+          price: true,
+          brands: { select: { name: true } },
+          types: { select: { name: true } },
+          categories: { select: { name: true } },
+          photos: { select: { url: true, isPrimary: true }, orderBy: { isPrimary: "desc" }, take: 1 },
+        },
+        orderBy: { createdAt: "desc" },
+        take: 200,
+      });
+      return products.map((p) => ({
+        id: p.id,
+        name: p.name,
+        price: p.price,
+        brandName: p.brands.map((b) => b.name).join(", ") || null,
+        typeName: p.types.map((t) => t.name).join(", ") || null,
+        categoryName: p.categories.map((c) => c.name).join(", ") || null,
+        photoUrl: p.photos[0]?.url ?? null,
+      }));
     },
-    orderBy: { createdAt: "desc" },
-    take: 500,
-  });
-  return products.map((p) => ({
-    id: p.id,
-    name: p.name,
-    description: p.description,
-    price: p.price,
-    brandName: p.brands.map(b => b.name).join(", ") || null,
-    typeName: p.types.map(t => t.name).join(", ") || null,
-    categoryName: p.categories.map(c => c.name).join(", ") || null,
-    photoUrl: (p.photos.find(ph => ph.isPrimary) ?? p.photos[0])?.url ?? null,
-  }));
+    ["search-index-cache"],
+    { revalidate: 600, tags: ["search-index"] }
+  )();
 }
 
 // Server action to update a product (admin-only)

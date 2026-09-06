@@ -64,35 +64,43 @@ export async function createFeedback(data: { type: FeedbackType; content: string
   return feedback;
 }
 
+import { unstable_cache } from "next/cache";
+
 // Get Home Testimonials (Approved testimonials to display on the Home page)
 export async function getHomeTestimonials(): Promise<TestimonialOutput[]> {
-  try {
-    const testimonials = await prisma.feedback.findMany({
-      where: {
-        type: "TESTIMONIAL",
-        showOnHome: true,
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        user: {
-          select: {
-            name: true,
+  return unstable_cache(
+    async () => {
+      try {
+        const testimonials = await prisma.feedback.findMany({
+          where: {
+            type: "TESTIMONIAL",
+            showOnHome: true,
           },
-        },
-      },
-    });
+          orderBy: {
+            createdAt: "desc",
+          },
+          include: {
+            user: {
+              select: {
+                name: true,
+              },
+            },
+          },
+        });
 
-    return testimonials.map((t) => ({
-      id: t.id,
-      content: t.content,
-      userName: t.user?.name || "Anonymous",
-    }));
-  } catch (error) {
-    console.warn("Failed to query testimonials from database:", error instanceof Error ? error.message : String(error));
-    return [];
-  }
+        return testimonials.map((t) => ({
+          id: t.id,
+          content: t.content,
+          userName: t.user?.name || "Anonymous",
+        }));
+      } catch (error) {
+        console.warn("Failed to query testimonials from database:", error instanceof Error ? error.message : String(error));
+        return [];
+      }
+    },
+    ["home-testimonials"],
+    { revalidate: 300, tags: ["testimonials"] }
+  )();
 }
 
 // Create Return Request
