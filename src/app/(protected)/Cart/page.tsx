@@ -155,8 +155,18 @@ export default function Cart() {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || 'Failed to create order');
+        let errMessage = 'Failed to create order';
+        try {
+          const errorData = await response.json();
+          if (typeof errorData?.error === 'string') {
+            errMessage = errorData.error;
+          } else if (errorData?.error && typeof errorData.error === 'object') {
+            errMessage = JSON.stringify(errorData.error);
+          }
+        } catch {
+          // Response body was not JSON
+        }
+        throw new Error(errMessage);
       }
 
       const data = await response.json();
@@ -200,6 +210,10 @@ export default function Cart() {
         modal: {
           ondismiss: function () {
             setIsProcessing(false);
+            paymentAttemptedRef.current = false;
+            if (paymentStep) {
+              router.replace('/Cart');
+            }
           },
         },
       };
@@ -209,8 +223,11 @@ export default function Cart() {
     } catch (error) {
       console.error('Checkout error:', error);
       paymentAttemptedRef.current = false;
-      alert(error instanceof Error ? error.message : 'Failed to initiate checkout. Please try again.');
       setIsProcessing(false);
+      if (paymentStep) {
+        router.replace('/Cart');
+      }
+      alert(error instanceof Error ? error.message : 'Failed to initiate checkout. Please try again.');
     }
   };
 

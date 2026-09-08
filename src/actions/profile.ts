@@ -103,7 +103,7 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
   const orders = await (prisma as any).order.findMany({
     where: {
       userId,
-      ...(status && { status })
+      ...(status ? { status } : { status: { in: ["PAID", "SHIPPED", "DELIVERED", "COMPLETED", "RETURN_REQUESTED", "RETURNED", "CANCELLED"] } })
     },
     include: {
       items: {
@@ -416,6 +416,9 @@ export async function getAdminOrders() {
   }
 
   const orders = await prisma.order.findMany({
+    where: {
+      status: { in: ["PAID", "SHIPPED", "DELIVERED", "COMPLETED", "RETURN_REQUESTED", "RETURNED", "CANCELLED"] },
+    },
     orderBy: { createdAt: "desc" },
     include: {
       user: { select: { id: true, name: true, email: true, phoneNumber: true } },
