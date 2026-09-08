@@ -57,6 +57,8 @@ export type WishlistListItem = {
   img: string;
 };
 
+import { getPresignedImageUrl } from "@/lib/s3Presigner";
+
 export async function getMyWishlistItems(): Promise<WishlistListItem[]> {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
@@ -76,17 +78,21 @@ export async function getMyWishlistItems(): Promise<WishlistListItem[]> {
     orderBy: { addedAt: "desc" },
   });
 
-  return entries.map((w) => {
-    const primary = w.product.photos.find((p) => p.isPrimary) ?? w.product.photos[0];
-    return {
-      id: w.product.id,
-      name: w.product.name,
-      price: `₹${Math.round(w.product.price).toLocaleString("en-IN")}`,
-      tag: w.product.tag ?? undefined,
-      license: Boolean(w.product.licenseRequired),
-      img: primary?.url || "/next.svg",
-    };
-  });
+  return Promise.all(
+    entries.map(async (w) => {
+      const primary = w.product.photos.find((p) => p.isPrimary) ?? w.product.photos[0];
+      const rawUrl = primary?.url || "/next.svg";
+      const presignedUrl = await getPresignedImageUrl(rawUrl);
+      return {
+        id: w.product.id,
+        name: w.product.name,
+        price: `₹${Math.round(w.product.price).toLocaleString("en-IN")}`,
+        tag: w.product.tag ?? undefined,
+        license: Boolean(w.product.licenseRequired),
+        img: presignedUrl,
+      };
+    })
+  );
 }
 
 export async function removeFromMyWishlist(productId: string) {
@@ -199,21 +205,24 @@ export async function getWishlistRecommendations(): Promise<RecommendedProduct[]
       take: 12,
     });
 
-    return products.map((p) => {
-      const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
-      return {
-        id: p.id,
-        name: p.name,
-        price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
-        img: primary?.url || "/next.svg",
-        brand: p.brands.map(b => b.name).join(", "),
-        type: p.types.map(t => t.name).join(", "),
-      };
-    });
+    return Promise.all(
+      products.map(async (p) => {
+        const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
+        const rawUrl = primary?.url || "/next.svg";
+        const presignedUrl = await getPresignedImageUrl(rawUrl);
+        return {
+          id: p.id,
+          name: p.name,
+          price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
+          img: presignedUrl,
+          brand: p.brands.map((b) => b.name).join(", "),
+          type: p.types.map((t) => t.name).join(", "),
+        };
+      })
+    );
   } catch (error) {
     console.error("Error fetching wishlist recommendations:", error);
     return [];
   }
 }
-
 

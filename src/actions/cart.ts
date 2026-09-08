@@ -135,6 +135,8 @@ export type CartListItem = {
   image: string;
 };
 
+import { getPresignedImageUrl } from "@/lib/s3Presigner";
+
 export async function getMyCartItems(): Promise<CartListItem[]> {
   const session = await getServerSession(authOptions);
   const email = session?.user?.email ?? null;
@@ -156,19 +158,23 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
     orderBy: { addedAt: "desc" },
   });
 
-  return entries.map((c) => {
-    const primary = c.product.photos.find((p) => p.isPrimary) ?? c.product.photos[0];
-    return {
-      id: c.id,
-      productId: c.productId,
-      name: c.product.name,
-      category: c.product.categories.map((cat: { name: string }) => cat.name).join(", "),
-      brand: c.product.brands.map((b: { name: string }) => b.name).join(", "),
-      price: c.product.price,
-      quantity: c.quantity,
-      image: primary?.url || "/next.svg",
-    };
-  });
+  return Promise.all(
+    entries.map(async (c) => {
+      const primary = c.product.photos.find((p) => p.isPrimary) ?? c.product.photos[0];
+      const rawUrl = primary?.url || "/next.svg";
+      const presignedUrl = await getPresignedImageUrl(rawUrl);
+      return {
+        id: c.id,
+        productId: c.productId,
+        name: c.product.name,
+        category: c.product.categories.map((cat: { name: string }) => cat.name).join(", "),
+        brand: c.product.brands.map((b: { name: string }) => b.name).join(", "),
+        price: c.product.price,
+        quantity: c.quantity,
+        image: presignedUrl,
+      };
+    })
+  );
 }
 
 export async function removeCartItem(cartItemId: string) {

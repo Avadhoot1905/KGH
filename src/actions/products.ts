@@ -279,6 +279,17 @@ function buildOrder(filters?: ProductFilters): Prisma.ProductOrderByWithRelation
   }
 }
 
+import { getPresignedImageUrl, presignPhotos } from "@/lib/s3Presigner";
+
+async function presignProductListItem<T extends ProductListItem>(product: T): Promise<T> {
+  if (!product) return product;
+  const presignedPhotos = await presignPhotos(product.photos || []);
+  return {
+    ...product,
+    photos: presignedPhotos,
+  };
+}
+
 export async function getProducts(query?: ProductQuery): Promise<PaginatedProducts> {
   const filters = query?.filters;
   const where = buildWhere(filters);
@@ -296,8 +307,12 @@ export async function getProducts(query?: ProductQuery): Promise<PaginatedProduc
 
     const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
+    const presignedItems = await Promise.all(
+      (products as unknown as ProductListItem[]).map((p) => presignProductListItem(p))
+    );
+
     return {
-      items: products as unknown as ProductListItem[],
+      items: presignedItems,
       total,
       page,
       pageSize,
@@ -353,7 +368,8 @@ export async function getProductById(productId: string): Promise<ProductListItem
     where: { id: productId },
     include: baseInclude,
   });
-  return (product as unknown as ProductListItem) ?? null;
+  if (!product) return null;
+  return presignProductListItem(product as unknown as ProductListItem);
 }
 
 // Get related products with full details for a product
@@ -379,7 +395,7 @@ export async function getRelatedProductsWithDetails(productId: string): Promise<
       include: baseInclude,
     });
     
-    return (relatedProducts as unknown as ProductListItem[]) ?? [];
+    return Promise.all((relatedProducts as unknown as ProductListItem[]).map((p) => presignProductListItem(p)));
   } catch (error) {
     console.error("Error fetching related products:", error);
     return [];
@@ -411,15 +427,17 @@ export async function getSearchIndex() {
         orderBy: { createdAt: "desc" },
         take: 200,
       });
-      return products.map((p) => ({
-        id: p.id,
-        name: p.name,
-        price: p.price,
-        brandName: p.brands.map((b) => b.name).join(", ") || null,
-        typeName: p.types.map((t) => t.name).join(", ") || null,
-        categoryName: p.categories.map((c) => c.name).join(", ") || null,
-        photoUrl: p.photos[0]?.url ?? null,
-      }));
+      return Promise.all(
+        products.map(async (p) => ({
+          id: p.id,
+          name: p.name,
+          price: p.price,
+          brandName: p.brands.map((b) => b.name).join(", ") || null,
+          typeName: p.types.map((t) => t.name).join(", ") || null,
+          categoryName: p.categories.map((c) => c.name).join(", ") || null,
+          photoUrl: p.photos[0]?.url ? await getPresignedImageUrl(p.photos[0].url) : null,
+        }))
+      );
     },
     ["search-index-cache"],
     { revalidate: 600, tags: ["search-index"] }

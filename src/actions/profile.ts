@@ -23,6 +23,8 @@ async function getUserIdFromSession(): Promise<string> {
   return user.id;
 }
 
+import { getPresignedImageUrl } from "@/lib/s3Presigner";
+
 export async function getRecentlyViewedProducts(limit: number = 8): Promise<ViewedProductItem[]> {
   try {
     const userId = await getUserIdFromSession();
@@ -33,15 +35,19 @@ export async function getRecentlyViewedProducts(limit: number = 8): Promise<View
       take: Math.max(1, Math.min(24, limit)),
     });
 
-    return products.map((p) => {
-      const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
-      return {
-        id: p.id,
-        name: p.name,
-        price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
-        img: primary?.url || "/next.svg",
-      };
-    });
+    return Promise.all(
+      products.map(async (p) => {
+        const primary = p.photos.find((ph) => ph.isPrimary) ?? p.photos[0];
+        const rawUrl = primary?.url || "/next.svg";
+        const presignedUrl = await getPresignedImageUrl(rawUrl);
+        return {
+          id: p.id,
+          name: p.name,
+          price: `₹${Math.round(p.price).toLocaleString("en-IN")}`,
+          img: presignedUrl,
+        };
+      })
+    );
   } catch {
     return [];
   }
@@ -116,34 +122,43 @@ export async function getOrdersByStatus(status?: "PENDING" | "COMPLETED" | "CANC
     orderBy: { createdAt: "desc" },
   }) as PrismaOrder[];
 
-  return orders.map((order: PrismaOrder) => ({
-    id: order.id,
-    status: order.status,
-    total: `₹${Math.round(order.total).toLocaleString("en-IN")}`,
-    items: order.items.map((item) => ({
-      id: item.id,
-      quantity: item.quantity,
-      price: item.price,
-      product: {
-        id: item.product.id,
-        name: item.product.name,
-        photos: item.product.photos,
-      },
-    })),
-    createdAt: new Date(order.createdAt).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }),
-    updatedAt: new Date(order.updatedAt).toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric"
-    }),
-    trackingNumber: order.trackingNumber || null,
-    trackingUrl: order.trackingUrl || null,
-    carrier: order.carrier || null,
-  }));
+  return Promise.all(
+    orders.map(async (order: PrismaOrder) => ({
+      id: order.id,
+      status: order.status,
+      total: `₹${Math.round(order.total).toLocaleString("en-IN")}`,
+      items: await Promise.all(
+        order.items.map(async (item) => ({
+          id: item.id,
+          quantity: item.quantity,
+          price: item.price,
+          product: {
+            id: item.product.id,
+            name: item.product.name,
+            photos: await Promise.all(
+              item.product.photos.map(async (ph) => ({
+                ...ph,
+                url: await getPresignedImageUrl(ph.url),
+              }))
+            ),
+          },
+        }))
+      ),
+      createdAt: new Date(order.createdAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }),
+      updatedAt: new Date(order.updatedAt).toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric"
+      }),
+      trackingNumber: order.trackingNumber || null,
+      trackingUrl: order.trackingUrl || null,
+      carrier: order.carrier || null,
+    }))
+  );
   } catch {
     return [];
   }
