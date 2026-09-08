@@ -4,11 +4,16 @@ import { authOptions } from '@/auth';
 import { prisma } from '@/lib/prisma';
 import Razorpay from 'razorpay';
 
-// Initialize Razorpay instance with credentials
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID!,
-  key_secret: process.env.RAZORPAY_KEY_SECRET!,
-});
+function getRazorpayInstance() {
+  const key_id = process.env.RAZORPAY_KEY_ID;
+  const key_secret = process.env.RAZORPAY_KEY_SECRET;
+
+  if (!key_id || !key_secret) {
+    throw new Error("Razorpay API keys are missing in server environment (RAZORPAY_KEY_ID / RAZORPAY_KEY_SECRET)");
+  }
+
+  return new Razorpay({ key_id, key_secret });
+}
 
 export async function POST(req: NextRequest) {
   try {
@@ -196,6 +201,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Create Razorpay order for remaining balance
+    const razorpay = getRazorpayInstance();
     const razorpayOrder = await razorpay.orders.create({
       amount: amountInPaise,
       currency: 'INR',

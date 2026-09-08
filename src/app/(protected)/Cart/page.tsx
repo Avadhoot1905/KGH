@@ -158,10 +158,14 @@ export default function Cart() {
         let errMessage = 'Failed to create order';
         try {
           const errorData = await response.json();
-          if (typeof errorData?.error === 'string') {
+          if (typeof errorData === 'string') {
+            errMessage = errorData;
+          } else if (typeof errorData?.error === 'string') {
             errMessage = errorData.error;
           } else if (errorData?.error && typeof errorData.error === 'object') {
             errMessage = JSON.stringify(errorData.error);
+          } else if (errorData && typeof errorData === 'object') {
+            errMessage = JSON.stringify(errorData);
           }
         } catch {
           // Response body was not JSON
@@ -185,6 +189,9 @@ export default function Cart() {
         alert('Payment gateway script is loading or blocked by browser extension. Please refresh and try again.');
         setIsProcessing(false);
         paymentAttemptedRef.current = false;
+        if (paymentStep) {
+          router.replace('/Cart');
+        }
         return;
       }
 
@@ -227,7 +234,9 @@ export default function Cart() {
       if (paymentStep) {
         router.replace('/Cart');
       }
-      alert(error instanceof Error ? error.message : 'Failed to initiate checkout. Please try again.');
+      const rawMsg = error instanceof Error ? error.message : String(error);
+      const displayMsg = rawMsg && rawMsg !== '[object Object]' ? rawMsg : 'Failed to initiate checkout. Please check server configuration or try again.';
+      alert(displayMsg);
     }
   };
 
