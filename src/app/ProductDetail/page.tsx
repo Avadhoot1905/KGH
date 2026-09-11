@@ -42,8 +42,42 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
     );
   }
 
+  const productJsonLd = {
+    "@context": "https://schema.org/",
+    "@type": "Product",
+    "name": product.name,
+    "image": product.photos.map((p) => p.url),
+    "description": product.description,
+    "sku": product.id,
+    "brand": {
+      "@type": "Brand",
+      "name": product.brands.map((b) => b.name).join(", ") || "Kathuria Gun House",
+    },
+    "offers": {
+      "@type": "Offer",
+      "url": `https://buyairgunsindia.in/ProductDetail/${product.id}`,
+      "priceCurrency": "INR",
+      "price": product.price,
+      "itemCondition": "https://schema.org/NewCondition",
+      "availability": product.quantity > 0 ? "https://schema.org/InStock" : "https://schema.org/OutOfStock",
+      "seller": {
+        "@type": "Organization",
+        "name": "Kathuria Gun House",
+      },
+    },
+    "aggregateRating": (product.totalReviews ?? 0) > 0 ? {
+      "@type": "AggregateRating",
+      "ratingValue": product.averageRating || 5,
+      "reviewCount": product.totalReviews ?? 0,
+    } : undefined,
+  };
+
   return (
     <div>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd) }}
+      />
       <Navbar />
 
       <div className="product-detail-page">
