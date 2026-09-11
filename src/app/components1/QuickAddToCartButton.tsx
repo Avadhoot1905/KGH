@@ -34,10 +34,14 @@ function QuickAddToCartInner({ productId, licenseRequired, productQuantity }: Qu
       return;
     }
 
+    if (typeof productQuantity === "number" && delta > 0 && quantity >= productQuantity) {
+      return;
+    }
+
     try {
       await updateCartQuantity(productId, delta);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update cart");
+    } catch {
+      // Quiet fail without alert popup or crashing
     }
   };
 
@@ -80,6 +84,8 @@ function QuickAddToCartInner({ productId, licenseRequired, productQuantity }: Qu
     );
   }
 
+  const isMaxStockReached = typeof productQuantity === "number" && quantity >= productQuantity;
+
   return (
     <div className="quick-cart-controls" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
       <button
@@ -91,7 +97,9 @@ function QuickAddToCartInner({ productId, licenseRequired, productQuantity }: Qu
       <span className="quick-cart-qty">{quantity}</span>
       <button
         onClick={(e) => handleQuantityChange(e, 1)}
-        className="quick-cart-control-btn"
+        disabled={isMaxStockReached}
+        className={`quick-cart-control-btn ${isMaxStockReached ? "opacity-30 cursor-not-allowed" : ""}`}
+        title={isMaxStockReached ? `Maximum available stock reached (${productQuantity})` : "Increase quantity"}
       >
         <FaPlus size={10} />
       </button>

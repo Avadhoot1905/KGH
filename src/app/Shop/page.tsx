@@ -366,17 +366,20 @@ function ShopContent() {
                           href={`/ProductDetail/${product.id}`}
                           className="product-card"
                         >
-                          {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
-                            <span
-                              key={idx}
-                              className={`tag ${
-                                t === "NEW" ? "new" : "top"
-                              }`}
-                              style={{ marginRight: 4, display: 'inline-block' }}
-                            >
-                              {t}
-                            </span>
-                          ))}
+                          {(() => {
+                            const tags = product.tag ? product.tag.split(",").map((t) => t.trim()).filter(Boolean) : [];
+                            const firstTag = tags[0];
+                            if (!firstTag) return null;
+                            const formattedTag = firstTag.replace(/_/g, " ");
+                            return (
+                              <span
+                                className={`tag ${firstTag.toUpperCase() === "NEW" ? "new" : "top"}`}
+                                style={{ display: 'inline-block' }}
+                              >
+                                {formattedTag}
+                              </span>
+                            );
+                          })()}
                           <ProductCardGallery photos={product.photos} productName={product.name} height="200px" />
                           <h4>{product.name}</h4>
                           <p>{subtitle}</p>
@@ -410,17 +413,20 @@ function ShopContent() {
                                   href={`/ProductDetail/${product.id}`}
                                   className="product-card"
                                 >
-                                  {product.tag && product.tag.split(",").map((t) => t.trim()).filter(Boolean).map((t, idx) => (
-                                    <span
-                                      key={idx}
-                                      className={`tag ${
-                                        t === "NEW" ? "new" : "top"
-                                      }`}
-                                      style={{ marginRight: 4, display: 'inline-block' }}
-                                    >
-                                      {t}
-                                    </span>
-                                  ))}
+                                  {(() => {
+                                    const tags = product.tag ? product.tag.split(",").map((t) => t.trim()).filter(Boolean) : [];
+                                    const firstTag = tags[0];
+                                    if (!firstTag) return null;
+                                    const formattedTag = firstTag.replace(/_/g, " ");
+                                    return (
+                                      <span
+                                        className={`tag ${firstTag.toUpperCase() === "NEW" ? "new" : "top"}`}
+                                        style={{ display: 'inline-block' }}
+                                      >
+                                        {formattedTag}
+                                      </span>
+                                    );
+                                  })()}
                                   <ProductCardGallery photos={product.photos} productName={product.name} height="200px" />
                                   <h4>{product.name}</h4>
                                   <p>{`${product.calibers.map(c => c.name).join(", ")}, ${product.types.map(t => t.name).join(", ")}`}</p>

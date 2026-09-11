@@ -45,10 +45,15 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
       return;
     }
 
+    // Prevent increasing beyond available stock
+    if (typeof productQuantity === "number" && delta > 0 && quantity >= productQuantity) {
+      return;
+    }
+
     try {
       await updateCartQuantity(productId, delta);
-    } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to update cart");
+    } catch {
+      // Quiet fail without crashing or throwing unhandled server errors
     }
   };
 
@@ -108,8 +113,9 @@ function AddToCartButtonInner({ productId, disabled, className = "red", licenseR
       <button
         type="button"
         onClick={() => handleQuantityChange(1)}
-        disabled={disabled}
-        className={className}
+        disabled={disabled || (typeof productQuantity === "number" && quantity >= productQuantity)}
+        className={`${className} ${typeof productQuantity === "number" && quantity >= productQuantity ? "opacity-40 cursor-not-allowed" : ""}`}
+        title={typeof productQuantity === "number" && quantity >= productQuantity ? `Maximum available stock reached (${productQuantity})` : "Increase quantity"}
         style={{ minWidth: 38, padding: "8px 10px", display: "flex", alignItems: "center", justifyContent: "center" }}
       >
         +
