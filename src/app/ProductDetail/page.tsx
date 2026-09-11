@@ -7,6 +7,7 @@ import WishlistButton from "../components1/WishlistButton";
 import ShareButton from "../components1/ShareButton";
 import ProductGallery from "../components1/ProductGallery";
 import { getProductById, getRelatedProductsWithDetails } from "@/actions/products";
+import DeliveryEstimator from "../components1/DeliveryEstimator";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -111,6 +112,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<{ 
               <br />
               Valid license may be required depending on item. Local laws apply.
             </div>
+
+            <DeliveryEstimator />
           </div>
         </div>
       </div>

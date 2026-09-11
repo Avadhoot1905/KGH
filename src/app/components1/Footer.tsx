@@ -8,7 +8,7 @@ export default function Footer() {
        {/* === ABOUT === */}
 <div className="w-full md:w-[48%] min-w-0 md:pl-4 lg:pl-2">
   <h4 className="text-red-500 text-lg font-semibold mb-3 uppercase tracking-wide">
-    About
+    <a href="/About" className="hover:underline">About Us & FAQs</a>
   </h4>
 
   <p className="text-sm leading-relaxed">

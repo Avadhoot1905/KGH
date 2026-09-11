@@ -132,6 +132,7 @@ export type CartListItem = {
   brand: string;
   price: number;
   quantity: number;
+  availableQuantity: number;
   image: string;
 };
 
@@ -163,6 +164,18 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
       const primary = c.product.photos.find((p) => p.isPrimary) ?? c.product.photos[0];
       const rawUrl = primary?.url || "/next.svg";
       const presignedUrl = await getPresignedImageUrl(rawUrl);
+
+      // Auto-clamp cart quantity if DB stock drops below what user selected earlier
+      let effectiveQuantity = c.quantity;
+      if (c.product.quantity > 0 && c.quantity > c.product.quantity) {
+        effectiveQuantity = c.product.quantity;
+        // Update database in background to sync cart quantity
+        await prisma.cart.update({
+          where: { id: c.id },
+          data: { quantity: effectiveQuantity },
+        }).catch(() => {});
+      }
+
       return {
         id: c.id,
         productId: c.productId,
@@ -170,7 +183,8 @@ export async function getMyCartItems(): Promise<CartListItem[]> {
         category: c.product.categories.map((cat: { name: string }) => cat.name).join(", "),
         brand: c.product.brands.map((b: { name: string }) => b.name).join(", "),
         price: c.product.price,
-        quantity: c.quantity,
+        quantity: effectiveQuantity,
+        availableQuantity: c.product.quantity,
         image: presignedUrl,
       };
     })

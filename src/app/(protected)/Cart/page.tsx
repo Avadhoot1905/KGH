@@ -24,10 +24,10 @@ interface CartItem {
   price: number;
   oldPrice?: number;
   quantity: number;
+  availableQuantity?: number;
   image: string;
 }
 
-// Declare Razorpay type for TypeScript
 interface RazorpayOptions {
   key: string;
   amount: number;
@@ -69,6 +69,7 @@ export default function Cart() {
   const searchParams = useSearchParams();
   const { refreshCartAndWishlist } = useCartWishlist();
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [walletBalance, setWalletBalance] = useState<number>(0);
   const [useWallet, setUseWallet] = useState<boolean>(false);
   const [loading, setLoading] = useState(true);
@@ -91,6 +92,15 @@ export default function Cart() {
         if (mounted) {
           setCartItems(items);
           setWalletBalance(walletInfo.balance);
+          // By default, select all valid items (where availableQuantity >= item.quantity and availableQuantity > 0)
+          const validIds = new Set<string>();
+          items.forEach((item) => {
+            const avail = item.availableQuantity ?? 9999;
+            if (avail > 0 && item.quantity <= avail) {
+              validIds.add(String(item.id));
+            }
+          });
+          setSelectedIds(validIds);
         }
       } finally {
         if (mounted) setLoading(false);
@@ -101,22 +111,58 @@ export default function Cart() {
     };
   }, []);
 
-  const subtotal = useMemo(() => cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0), [cartItems]);
+  const selectedCartItems = useMemo(
+    () => cartItems.filter((item) => selectedIds.has(String(item.id))),
+    [cartItems, selectedIds]
+  );
+
+  const subtotal = useMemo(
+    () => selectedCartItems.reduce((acc, item) => acc + item.price * item.quantity, 0),
+    [selectedCartItems]
+  );
   const shipping = subtotal * 0.05;
   const tax = subtotal * 0.0875;
   const totalBeforeWallet = subtotal + shipping + tax;
   const walletDeduction = useWallet && walletBalance > 0 ? Math.min(walletBalance, totalBeforeWallet) : 0;
   const total = totalBeforeWallet - walletDeduction;
 
+  const toggleSelectItem = (id: string, isSelectable: boolean) => {
+    if (!isSelectable) return;
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    const selectableItems = cartItems.filter((item) => {
+      const avail = item.availableQuantity ?? 9999;
+      return avail > 0 && item.quantity <= avail;
+    });
+
+    const allSelectableChosen = selectableItems.length > 0 && selectableItems.every((item) => selectedIds.has(String(item.id)));
+
+    if (allSelectableChosen) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableItems.map((item) => String(item.id))));
+    }
+  };
+
   useEffect(() => {
-    if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || cartItems.length === 0) {
+    if (!paymentStep || paymentAttemptedRef.current || isProcessing || status !== 'authenticated' || !session?.user || selectedCartItems.length === 0) {
       return;
     }
 
     paymentAttemptedRef.current = true;
     void handleCheckout();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paymentStep, isProcessing, status, session?.user?.email, cartItems.length]);
+  }, [paymentStep, isProcessing, status, session?.user?.email, selectedCartItems.length]);
 
   /**
    * Handle checkout button click
@@ -130,8 +176,8 @@ export default function Cart() {
       return;
     }
 
-    if (cartItems.length === 0) {
-      alert('Your cart is empty.');
+    if (selectedCartItems.length === 0) {
+      alert('Please select at least one item to proceed with checkout.');
       return;
     }
 
@@ -151,7 +197,10 @@ export default function Cart() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ useWallet }),
+        body: JSON.stringify({
+          useWallet,
+          selectedItemIds: Array.from(selectedIds),
+        }),
       });
 
       if (!response.ok) {
@@ -177,7 +226,7 @@ export default function Cart() {
 
       // If order is 100% paid with wallet credits
       if (data.paidWithWallet) {
-        setCartItems([]);
+        setCartItems((prev) => prev.filter((item) => !selectedIds.has(String(item.id))));
         setIsProcessing(false);
         router.push('/Cart/success');
         return;
@@ -272,7 +321,7 @@ export default function Cart() {
         }),
       });
 
-      setCartItems([]);
+      setCartItems((prev) => prev.filter((item) => !selectedIds.has(String(item.id))));
       setIsProcessing(false);
       router.push('/Cart/success');
     } catch (error) {
@@ -292,11 +341,31 @@ export default function Cart() {
       <Navbar />
 
       <div className="cart-container">
-        <h2 className="cart-title">Your Cart</h2>
+        <h2 className="cart-title">Your Shopping Cart</h2>
 
         <div className="cart-content">
           {/* Left side - Cart Items */}
           <div className="cart-items">
+            {!loading && cartItems.length > 0 && (
+              <div className="flex items-center justify-between p-3 bg-[#1a1a1a] rounded-lg border border-[#333] mb-2 text-xs font-semibold text-gray-300">
+                <label className="flex items-center gap-2 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={
+                      cartItems.filter((i) => (i.availableQuantity ?? 9999) > 0 && i.quantity <= (i.availableQuantity ?? 9999)).length > 0 &&
+                      cartItems
+                        .filter((i) => (i.availableQuantity ?? 9999) > 0 && i.quantity <= (i.availableQuantity ?? 9999))
+                        .every((i) => selectedIds.has(String(i.id)))
+                    }
+                    onChange={toggleSelectAll}
+                    className="w-4 h-4 accent-red-600 cursor-pointer"
+                  />
+                  <span>Select All Items ({selectedIds.size}/{cartItems.length})</span>
+                </label>
+                <span className="text-gray-500">{selectedCartItems.length} selected for checkout</span>
+              </div>
+            )}
+
             {loading ? (
               <div className="flex flex-col items-center justify-center p-12 text-gray-400 w-full gap-4 col-span-full">
                 <svg className="animate-spin w-10 h-10 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -313,60 +382,123 @@ export default function Cart() {
                 <Link href="/Shop"><button className="btn-red mt-4">Start Shopping</button></Link>
               </div>
             ) : (
-              cartItems.map((item) => (
-                <div key={item.id} className="cart-item">
-                  <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
-                    <Image src={item.image} alt={item.name} className="cart-item-img" fill style={{ objectFit: 'cover' }} />
-                  </div>
+              cartItems.map((item) => {
+                const itemIdStr = String(item.id);
+                const avail = item.availableQuantity ?? 9999;
+                const isOutOfStock = avail <= 0;
+                const isQuantityExceeded = !isOutOfStock && item.quantity > avail;
+                const isSelectable = !isOutOfStock && !isQuantityExceeded;
+                const isChecked = selectedIds.has(itemIdStr);
 
-                <div className="cart-item-details">
-                  <h3>{item.name}</h3>
-                  <p>{item.category} • {item.brand}</p>
-
-                  <div className="cart-item-actions">
-                    <div className="quantity-controls">
-                      <button
-                        onClick={async () => {
-                          if (item.quantity === 1) {
-                            setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
-                            setShowRemoveConfirm(true);
-                            return;
-                          }
-                          await updateCartItemQuantity(String(item.id), -1);
-                          setCartItems((prev) => {
-                            const next = prev.map((p) =>
-                              p.id === item.id ? { ...p, quantity: Math.max(0, p.quantity - 1) } : p
-                            ).filter((p) => p.quantity > 0);
-                            return next;
-                          });
-                        }}
-                      >-</button>
-                      <span>{item.quantity}</span>
-                      <button
-                        onClick={async () => {
-                          await updateCartItemQuantity(String(item.id), 1);
-                          setCartItems((prev) => prev.map((p) => (p.id === item.id ? { ...p, quantity: p.quantity + 1 } : p)));
-                        }}
-                      >+</button>
+                return (
+                  <div
+                    key={item.id}
+                    className={`cart-item relative transition-all ${
+                      !isSelectable ? 'opacity-70 bg-[#161616] border border-red-900/30' : ''
+                    }`}
+                  >
+                    {/* Checkbox (Savana style) */}
+                    <div className="pr-3 flex items-center">
+                      <input
+                        type="checkbox"
+                        checked={isChecked && isSelectable}
+                        disabled={!isSelectable}
+                        onChange={() => toggleSelectItem(itemIdStr, isSelectable)}
+                        className={`w-5 h-5 accent-red-600 rounded transition-all ${
+                          !isSelectable ? 'cursor-not-allowed opacity-40' : 'cursor-pointer'
+                        }`}
+                        title={
+                          isOutOfStock
+                            ? 'Item is sold out'
+                            : isQuantityExceeded
+                            ? `Selected quantity (${item.quantity}) exceeds available stock (${avail}). Reduce quantity to select.`
+                            : 'Include item in checkout'
+                        }
+                      />
                     </div>
-                    <div className="cart-item-price">
-                      <span className="price">₹{item.price.toFixed(2)}</span>
-                      {item.oldPrice && (
-                        <span className="old-price">₹{item.oldPrice.toFixed(2)}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
 
-                <FaTrash
-                  className="delete-icon"
-                  onClick={() => {
-                    setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
-                    setShowRemoveConfirm(true);
-                  }}
-                />
-              </div>
-            ))
+                    <div style={{ position: 'relative', width: '120px', height: '120px', flexShrink: 0 }}>
+                      <Image src={item.image} alt={item.name} className="cart-item-img" fill style={{ objectFit: 'cover' }} />
+                    </div>
+
+                    <div className="cart-item-details flex-1">
+                      <h3>{item.name}</h3>
+                      <p>{item.category} • {item.brand}</p>
+
+                      {/* Savana Stock Alert Badge */}
+                      {isOutOfStock ? (
+                        <p className="text-xs text-red-500 font-semibold mt-1">
+                          ⚠️ Sold Out! Remove or move to wishlist.
+                        </p>
+                      ) : isQuantityExceeded ? (
+                        <div className="text-xs text-yellow-500 font-medium mt-1 space-y-0.5">
+                          <p>⚠️ Stock dropped! Only {avail} item{avail > 1 ? 's' : ''} left in stock.</p>
+                          <p className="text-gray-400 text-[11px]">
+                            You cannot check this item until you reduce quantity to {avail} or less.
+                          </p>
+                        </div>
+                      ) : avail <= 5 ? (
+                        <p className="text-xs text-orange-400 font-medium mt-1">
+                          🔥 Only {avail} left in stock!
+                        </p>
+                      ) : null}
+
+                      <div className="cart-item-actions">
+                        <div className="quantity-controls">
+                          <button
+                            onClick={async () => {
+                              if (item.quantity === 1) {
+                                setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
+                                setShowRemoveConfirm(true);
+                                return;
+                              }
+                              const nextQty = item.quantity - 1;
+                              await updateCartItemQuantity(String(item.id), -1);
+                              setCartItems((prev) =>
+                                prev.map((p) => (p.id === item.id ? { ...p, quantity: nextQty } : p))
+                              );
+
+                              // If reducing quantity now makes it valid (<= stock), auto-select checkbox
+                              if (nextQty <= avail && avail > 0) {
+                                setSelectedIds((prev) => new Set(prev).add(itemIdStr));
+                              }
+                            }}
+                          >-</button>
+                          <span>{item.quantity}</span>
+                          <button
+                            onClick={async () => {
+                              if (item.quantity >= avail) {
+                                alert(`Cannot increase quantity. Maximum available stock is ${avail}.`);
+                                return;
+                              }
+                              await updateCartItemQuantity(String(item.id), 1);
+                              setCartItems((prev) =>
+                                prev.map((p) => (p.id === item.id ? { ...p, quantity: p.quantity + 1 } : p))
+                              );
+                            }}
+                            disabled={item.quantity >= avail}
+                            className={item.quantity >= avail ? 'opacity-30 cursor-not-allowed' : ''}
+                          >+</button>
+                        </div>
+                        <div className="cart-item-price">
+                          <span className="price">₹{item.price.toFixed(2)}</span>
+                          {item.oldPrice && (
+                            <span className="old-price">₹{item.oldPrice.toFixed(2)}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    <FaTrash
+                      className="delete-icon"
+                      onClick={() => {
+                        setPendingRemoveItem({ id: String(item.id), productId: String(item.productId), name: item.name });
+                        setShowRemoveConfirm(true);
+                      }}
+                    />
+                  </div>
+                );
+              })
             )}
           </div>
 
@@ -375,7 +507,7 @@ export default function Cart() {
             <div className="cart-summary">
               <h3>Order Summary</h3>
               <div className="summary-row">
-                <span>Subtotal</span>
+                <span>Subtotal ({selectedCartItems.length} items)</span>
                 <span>₹{subtotal.toFixed(2)}</span>
               </div>
               <div className="summary-row">
@@ -424,6 +556,11 @@ export default function Cart() {
                     return;
                   }
 
+                  if (selectedCartItems.length === 0) {
+                    alert('Please select at least one item to proceed with checkout.');
+                    return;
+                  }
+
                   const profileResult = await getCurrentUserCheckoutDetails();
                   if (!profileResult.success || !profileResult.data?.profileCompleted) {
                     setProfileModalOpen(true);
@@ -432,13 +569,15 @@ export default function Cart() {
 
                   router.push('/Cart/checkout-details');
                 }}
-                disabled={isProcessing || status !== 'authenticated'}
+                disabled={isProcessing || status !== 'authenticated' || selectedCartItems.length === 0}
               >
                 {isProcessing 
                   ? 'Processing...' 
                   : status !== 'authenticated' 
                   ? 'Please Sign In' 
-                  : 'Proceed to Checkout'}
+                  : selectedCartItems.length === 0
+                  ? 'Select Items to Checkout'
+                  : `Proceed to Checkout (${selectedCartItems.length})`}
               </button>
               <Link href="/Shop">
                 <button className="continue-btn">Continue Shopping</button>

@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     const existing = await prisma.order.findFirst({
       where: { razorpayOrderId, userId: user.id },
-      include: { payment: true },
+      include: { payment: true, items: true },
     });
 
     if (!existing) {
@@ -89,6 +89,17 @@ export async function POST(req: Request) {
               razorpayPaymentId,
             },
           }),
+      // Decrement inventory quantity for each purchased item
+      ...existing.items.map((item) =>
+        prisma.product.update({
+          where: { id: item.productId },
+          data: {
+            quantity: {
+              decrement: item.quantity,
+            },
+          },
+        })
+      ),
     ]);
 
     await prisma.cart.updateMany({ where: { userId: user.id, removedAt: null }, data: { removedAt: new Date() } });

@@ -86,14 +86,37 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    let reqBody: { useWallet?: boolean; selectedItemIds?: string[] } = { useWallet: false };
+    try {
+      reqBody = await req.json();
+    } catch {
+      // Body empty or not JSON
+    }
+    const useWallet = Boolean(reqBody.useWallet);
+    const selectedIds = Array.isArray(reqBody.selectedItemIds) && reqBody.selectedItemIds.length > 0
+      ? new Set(reqBody.selectedItemIds)
+      : null;
+
+    // Filter cart items by selected IDs if passed
+    const activeCartItems = selectedIds
+      ? cartItems.filter((item) => selectedIds.has(item.id))
+      : cartItems;
+
+    if (!activeCartItems || activeCartItems.length === 0) {
+      return NextResponse.json(
+        { error: 'No items selected for checkout' },
+        { status: 400 }
+      );
+    }
+
     // Calculate total amount securely on the server
-    const subtotal = cartItems.reduce(
+    const subtotal = activeCartItems.reduce(
       (acc: number, item: { product: { price: number }, quantity: number }) => acc + item.product.price * item.quantity,
       0
     );
 
     // Validate stock and license required for each item
-    for (const item of cartItems) {
+    for (const item of activeCartItems) {
       if (item.product.quantity < item.quantity) {
         return NextResponse.json(
           { error: `Insufficient stock for "${item.product.name}". Only ${item.product.quantity} items left.` },
@@ -107,14 +130,6 @@ export async function POST(req: NextRequest) {
         );
       }
     }
-
-    let reqBody = { useWallet: false };
-    try {
-      reqBody = await req.json();
-    } catch {
-      // Body empty or not JSON
-    }
-    const useWallet = Boolean(reqBody.useWallet);
 
     // Calculate user's wallet balance from returned orders
     const returnedOrders = await prisma.order.findMany({
@@ -135,8 +150,10 @@ export async function POST(req: NextRequest) {
     const finalTotal = totalBeforeWallet - walletApplied;
     const amountInPaise = Math.round(finalTotal * 100);
 
-    // If final total after wallet deduction is 0 (100% covered by wallet)
-    if (amountInPaise === 0) {
+    const activeItemIds = activeCartItems.map((item) => item.id);
+
+    // If final total after wallet deduction is 0 or less than ₹1 (100 paise)
+    if (amountInPaise < 100) {
       const order = await prisma.$transaction(async (tx) => {
         const newOrder = await tx.order.create({
           data: {
@@ -153,13 +170,13 @@ export async function POST(req: NextRequest) {
             pincode: user.pincode ?? '',
             subtotal,
             shippingCost: shipping,
-            discount: walletApplied,
+            discount: totalBeforeWallet,
             tax,
             total: 0,
             status: 'PAID',
             razorpayOrderId: `WALLET_${Date.now()}`,
             items: {
-              create: cartItems.map((item) => ({
+              create: activeCartItems.map((item) => ({
                 productId: item.product.id,
                 quantity: item.quantity,
                 price: item.product.price,
@@ -179,11 +196,11 @@ export async function POST(req: NextRequest) {
         });
 
         await tx.cart.updateMany({
-          where: { userId, removedAt: null },
+          where: { id: { in: activeItemIds }, userId },
           data: { removedAt: new Date() },
         });
 
-        for (const item of cartItems) {
+        for (const item of activeCartItems) {
           await tx.product.update({
             where: { id: item.productId },
             data: { quantity: { decrement: item.quantity } },
@@ -208,7 +225,7 @@ export async function POST(req: NextRequest) {
       receipt: `order_${Date.now()}`,
       notes: {
         userId,
-        cartItemsCount: cartItems.length.toString(),
+        cartItemsCount: activeCartItems.length.toString(),
         walletApplied: walletApplied.toString(),
       },
     });
@@ -235,7 +252,7 @@ export async function POST(req: NextRequest) {
         status: 'PENDING',
         razorpayOrderId: razorpayOrder.id,
         items: {
-          create: cartItems.map((item) => ({
+          create: activeCartItems.map((item) => ({
             productId: item.product.id,
             quantity: item.quantity,
             price: item.product.price,
@@ -263,8 +280,29 @@ export async function POST(req: NextRequest) {
       currency: razorpayOrder.currency,
       key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
     });
-  } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
+  } catch (error: unknown) {
+    let errorMessage = "Failed to create order";
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === "object" && error !== null) {
+      const errObj = error as Record<string, unknown>;
+      if (typeof errObj.description === "string") {
+        errorMessage = errObj.description;
+      } else if (typeof errObj.error === "string") {
+        errorMessage = errObj.error;
+      } else if (typeof errObj.error === "object" && errObj.error !== null) {
+        const nestedErr = errObj.error as Record<string, unknown>;
+        if (typeof nestedErr.description === "string") {
+          errorMessage = nestedErr.description;
+        } else {
+          errorMessage = JSON.stringify(nestedErr);
+        }
+      } else {
+        errorMessage = JSON.stringify(error);
+      }
+    } else {
+      errorMessage = String(error);
+    }
     console.error('❌ Error creating order:', errorMessage);
     console.error('Full error:', error);
     return NextResponse.json(

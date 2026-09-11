@@ -148,8 +148,12 @@ function ShopContent() {
         const pageParam = searchParams.get("page");
         const page = pageParam ? Math.max(1, parseInt(pageParam)) : 1;
 
+        // Determine page size based on screen size (10 for mobile/phone, 24 for desktop)
+        const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
+        const pageSize = isMobile ? 10 : 24;
+
         // Fetch products with filters
-        const productsResult = await getProducts({ filters, page, pageSize: 24 });
+        const productsResult = await getProducts({ filters, page, pageSize });
 
         setFiltersData((prev) => ({
           ...prev,
@@ -167,6 +171,12 @@ function ShopContent() {
       }
     }
     fetchProducts();
+
+    const handleResize = () => {
+      fetchProducts();
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
