@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { useRef, useState, FormEvent, useEffect } from "react";
+import { useRef, useState, FormEvent } from "react";
 import { ProductListItem } from "@/actions/products";
 import { 
   updateProductAction, 
@@ -73,31 +73,33 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   const [photos, setPhotos] = useState<ManageablePhoto[]>([]);
   const [replacingIndex, setReplacingIndex] = useState<number | null>(null);
 
-  useEffect(() => {
+  const [optionsLoaded, setOptionsLoaded] = useState(false);
+
+  async function loadMetadataOptions() {
+    if (optionsLoaded || loadingProducts) return;
     setLoadingProducts(true);
-    Promise.all([
-      getAllProductsForSelector(),
-      getAllBrandsForSelector(),
-      getAllTypesForSelector(),
-      getAllCalibersForSelector(),
-      getAllCategoriesForSelector(),
-      getAllTagsForSelector(),
-    ])
-      .then(([productsData, brandsData, typesData, calibersData, categoriesData, tagsData]) => {
-        setAllProducts(productsData);
-        setBrands(brandsData);
-        setTypes(typesData);
-        setCalibers(calibersData);
-        setCategories(categoriesData);
-        setTags(tagsData);
-      })
-      .catch(() => {
-        setError("Failed to load data");
-      })
-      .finally(() => {
-        setLoadingProducts(false);
-      });
-  }, []);
+    try {
+      const [productsData, brandsData, typesData, calibersData, categoriesData, tagsData] = await Promise.all([
+        getAllProductsForSelector(),
+        getAllBrandsForSelector(),
+        getAllTypesForSelector(),
+        getAllCalibersForSelector(),
+        getAllCategoriesForSelector(),
+        getAllTagsForSelector(),
+      ]);
+      setAllProducts(productsData);
+      setBrands(brandsData);
+      setTypes(typesData);
+      setCalibers(calibersData);
+      setCategories(categoriesData);
+      setTags(tagsData);
+      setOptionsLoaded(true);
+    } catch {
+      setError("Failed to load metadata options");
+    } finally {
+      setLoadingProducts(false);
+    }
+  }
 
   async function handleAddNewTag(tagName: string) {
     try {
@@ -216,7 +218,12 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     setDeleteCountdown(5);
     let count = 5;
     
-    deleteTimerRef.current = setInterval(async () => {
+    // Clear any previous timer if present
+    if (deleteTimerRef.current) {
+      clearInterval(deleteTimerRef.current);
+    }
+
+    deleteTimerRef.current = setInterval(() => {
       count -= 1;
       setDeleteCountdown(count);
       
@@ -227,17 +234,19 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         }
         setDeleteCountdown(null);
         
-        try {
-          setPending(true);
-          await deleteProductAction(product.id);
-          setShowConfirmDelete(false);
-          router.refresh();
-        } catch (e: unknown) {
-          setError(e instanceof Error ? e.message : "Failed to delete product");
-          setShowConfirmDelete(false);
-        } finally {
-          setPending(false);
-        }
+        setPending(true);
+        deleteProductAction(product.id)
+          .then(() => {
+            setShowConfirmDelete(false);
+            router.refresh();
+          })
+          .catch((e: unknown) => {
+            setError(e instanceof Error ? e.message : "Failed to delete product");
+            setShowConfirmDelete(false);
+          })
+          .finally(() => {
+            setPending(false);
+          });
       }
     }, 1000);
   };
@@ -251,19 +260,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     setShowConfirmDelete(false);
   };
 
-  async function loadProducts() {
-    if (allProducts.length === 0 && !loadingProducts) {
-      setLoadingProducts(true);
-      try {
-        const products = await getAllProductsForSelector();
-        setAllProducts(products);
-      } catch (e) {
-        console.error("Failed to load products", e);
-      } finally {
-        setLoadingProducts(false);
-      }
-    }
-  }
+
 
   const handleAddPhotos = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -336,7 +333,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
   };
 
   function openDialog() {
-    loadProducts();
+    loadMetadataOptions();
     setSelectedRelatedIds(product.relatedProducts?.map((p) => p.id) || []);
     
     // Initialize unified photos state
