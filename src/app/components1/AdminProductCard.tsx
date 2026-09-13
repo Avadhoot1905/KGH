@@ -452,6 +452,53 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
         </div>
       </div>
       <div className="flex items-center justify-end gap-2 mt-4">
+        {(() => {
+          const isFeatured = (product.tag ?? "").toUpperCase().split(",").map(t => t.trim()).includes("FEATURED");
+          return (
+            <button
+              type="button"
+              disabled={pending}
+              onClick={async () => {
+                try {
+                  setPending(true);
+                  const currentTags = (product.tag ?? "")
+                    .split(",")
+                    .map((t) => t.trim())
+                    .filter(Boolean);
+                  let newTagStr = "";
+                  if (isFeatured) {
+                    newTagStr = currentTags.filter((t) => t.toUpperCase() !== "FEATURED").join(", ");
+                  } else {
+                    newTagStr = currentTags.includes("FEATURED")
+                      ? currentTags.join(", ")
+                      : [...currentTags, "FEATURED"].join(", ");
+                  }
+                  const formData = new FormData();
+                  formData.append("name", product.name);
+                  formData.append("price", product.price.toString());
+                  formData.append("description", product.description);
+                  formData.append("quantity", product.quantity.toString());
+                  if (product.licenseRequired) formData.append("licenseRequired", "on");
+                  formData.append("tag", newTagStr);
+                  await updateProductAction(product.id, formData);
+                  router.refresh();
+                } catch (err) {
+                  console.error(err);
+                } finally {
+                  setPending(false);
+                }
+              }}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                isFeatured
+                  ? "bg-amber-500 hover:bg-amber-600 text-black font-semibold border border-amber-500"
+                  : "bg-[#111] hover:bg-[#252525] text-gray-300 border border-[#444]"
+              }`}
+            >
+              {isFeatured ? "★ Featured" : "☆ Feature on Home"}
+            </button>
+          );
+        })()}
+
         <button className="px-3 py-1.5 rounded border text-sm bg-[#111] text-white hover:bg-[#222] transition-colors" 
         onClick={openDialog} > 
         Edit 

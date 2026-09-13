@@ -37,13 +37,15 @@ export default function ConditionalFeedbackButton() {
   };
 
   const isModPage = pathname?.startsWith('/mod') || pathname?.startsWith('/(admin)');
+  const isHomePage = pathname === '/';
   const isAuth = status !== 'loading' && !!session?.user;
 
   return (
     <>
       {!isModPage && isAuth && <FeedbackButton />}
 
-      <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-auto">
+      {!isHomePage && (
+        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-auto">
         {showTop && (
           <button
             onClick={scrollToTop}
@@ -65,6 +67,7 @@ export default function ConditionalFeedbackButton() {
           </button>
         )}
       </div>
+      )}
     </>
   );
 }

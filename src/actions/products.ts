@@ -238,7 +238,7 @@ function buildWhere(filters?: ProductFilters): Prisma.ProductWhereInput {
     };
   }
   if (filters.tag) {
-    where.tag = filters.tag;
+    where.tag = { contains: filters.tag, mode: "insensitive" };
   }
   if (filters.search && filters.search.trim().length > 0) {
     const q = filters.search.trim();

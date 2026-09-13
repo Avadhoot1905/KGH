@@ -38,8 +38,13 @@ export default async function Home() {
   let testimonials: Array<{ id: string; content: string; userName: string }> = [];
 
   try {
-    const [fetchedTestimonials, airgunsCategories] = await Promise.all([
+    const [fetchedTestimonials, taggedFeaturedProducts, airgunsCategories] = await Promise.all([
       getHomeTestimonials(),
+      getProducts({
+        filters: { tag: "FEATURED" },
+        page: 1,
+        pageSize: 4,
+      }),
       prisma.category.findMany({
         where: { name: { contains: 'Air', mode: 'insensitive' } },
         select: { id: true },
@@ -47,15 +52,19 @@ export default async function Home() {
     ]);
 
     testimonials = fetchedTestimonials;
-    const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
 
-    featuredProducts = await getProducts({
-      filters: {
-        categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
-      },
-      page: 1,
-      pageSize: 4,
-    });
+    if (taggedFeaturedProducts.items.length > 0) {
+      featuredProducts = taggedFeaturedProducts;
+    } else {
+      const categoryIds = airgunsCategories.map((cat: { id: string }) => cat.id);
+      featuredProducts = await getProducts({
+        filters: {
+          categoryIds: categoryIds.length > 0 ? categoryIds : undefined,
+        },
+        page: 1,
+        pageSize: 4,
+      });
+    }
   } catch (error) {
     console.warn('Failed to load homepage data:', error instanceof Error ? error.message : String(error));
   }
@@ -90,14 +99,14 @@ export default async function Home() {
 
         {/* Content sits above the banner like a profile box */}
         <div className="relative z-20 max-w-xl w-full lg:w-1/2 mx-auto lg:mx-0">
-          <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
-            <span>BUY AIR GUNS ONLINE INDIA</span><br />
-            <span className="text-red-500">AIR PISTOLS & RIFLES</span><br />
-            KATHURIA GUN HOUSE
+          <h1 className="text-4xl sm:text-5xl font-bold leading-tight">
+            <span>PRECISION.</span><br />
+            <span className="text-red-500">POWER.</span><br />
+            LEGACY.
           </h1>
 
-          <p className="text-gray-300 mt-4 text-sm sm:text-base">
-            India&apos;s leading dealer of Air Guns with Scope, Air Pistols, Air Gun Revolvers &amp; Target Rifles under 3000 &amp; 1000. 100% License-Free with Nationwide Cash on Delivery (COD).
+          <p className="text-gray-300 mt-4">
+            Premium firearms and tactical gear for the discerning professional
           </p>
 
           <div className="flex flex-wrap gap-4 mt-6">
