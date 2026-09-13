@@ -25,6 +25,7 @@ import {
   editCategoryAction,
   deleteCategoryAction
 } from "@/actions/products";
+import { useRouter } from "next/navigation";
 import RelatedProductsSelector from "./RelatedProductsSelector";
 import ManageableAutocompleteInput from "./ManageableAutocompleteInput";
 
@@ -40,6 +41,7 @@ type ManageablePhoto = {
 };
 
 export default function AdminCreateProduct({ buttonClassName }: AdminCreateProductProps) {
+  const router = useRouter();
   const dialogRef = useRef<HTMLDialogElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const replaceInputRef = useRef<HTMLInputElement>(null);
@@ -317,7 +319,7 @@ export default function AdminCreateProduct({ buttonClassName }: AdminCreateProdu
       dialogRef.current?.close();
       form.reset();
       setPhotos([]);
-      window.location.reload();
+      router.refresh();
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to create product");
     } finally {

@@ -90,14 +90,14 @@ export default async function Home() {
 
         {/* Content sits above the banner like a profile box */}
         <div className="relative z-20 max-w-xl w-full lg:w-1/2 mx-auto lg:mx-0">
-          <h1 className="text-4xl sm:text-5xl font-bold leading-tight">
-            <span>PRECISION.</span><br />
-            <span className="text-red-500">POWER.</span><br />
-            LEGACY.
+          <h1 className="text-3xl sm:text-5xl font-bold leading-tight">
+            <span>BUY AIR GUNS ONLINE INDIA</span><br />
+            <span className="text-red-500">AIR PISTOLS & RIFLES</span><br />
+            KATHURIA GUN HOUSE
           </h1>
 
-          <p className="text-gray-300 mt-4">
-            Premium firearms and tactical gear for the discerning professional
+          <p className="text-gray-300 mt-4 text-sm sm:text-base">
+            India&apos;s leading dealer of Air Guns with Scope, Air Pistols, Air Gun Revolvers &amp; Target Rifles under 3000 &amp; 1000. 100% License-Free with Nationwide Cash on Delivery (COD).
           </p>
 
           <div className="flex flex-wrap gap-4 mt-6">

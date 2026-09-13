@@ -214,6 +214,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
     setCategories((prev) => prev.filter((c) => c !== categoryToDelete));
   }
 
+  const [isDeletedOptimistic, setIsDeletedOptimistic] = useState(false);
+
   const startDeleteCountdown = () => {
     setDeleteCountdown(5);
     let count = 5;
@@ -233,7 +235,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
           deleteTimerRef.current = null;
         }
         setDeleteCountdown(null);
-        
+        setIsDeletedOptimistic(true);
         setPending(true);
         deleteProductAction(product.id)
           .then(() => {
@@ -241,6 +243,7 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
             router.refresh();
           })
           .catch((e: unknown) => {
+            setIsDeletedOptimistic(false);
             setError(e instanceof Error ? e.message : "Failed to delete product");
             setShowConfirmDelete(false);
           })
@@ -397,6 +400,8 @@ export default function AdminProductCard({ product }: AdminProductCardProps) {
       setPending(false);
     }
   }
+
+  if (isDeletedOptimistic) return null;
 
   return (
     <div className="rounded-lg border border-[#333] shadow-lg p-6 bg-[#222] text-white transition-colors">

@@ -91,6 +91,8 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
   const [missingFieldFilter, setMissingFieldFilter] = useState<
     "ALL" | "ANY" | "TAG" | "CATEGORY" | "BRAND" | "TYPE" | "CALIBER" | "PHOTOS" | "DESCRIPTION"
   >("ALL");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [orders, setOrders] = useState<AdminOrderSummary[]>([]);
   const [ordersLoading, setOrdersLoading] = useState(true);
 
@@ -195,6 +197,12 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
 
     return result;
   }, [products, searchQuery, stockFilter, missingFieldFilter]);
+
+  const totalPages = Math.ceil(filteredProducts.length / ITEMS_PER_PAGE) || 1;
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredProducts.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredProducts, currentPage]);
 
   const lowStockCount = products.filter(
     (p) => p.quantity > 0 && p.quantity <= 5
@@ -604,9 +612,57 @@ export default function AdminProductsClient({ products }: AdminProductsClientPro
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {filteredProducts.map((product) => (
+          {paginatedProducts.map((product) => (
             <AdminProductCard key={product.id} product={product} />
           ))}
+
+          {/* Pagination Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between border-t border-[#333] pt-4 mt-2">
+              <span className="text-xs text-gray-400">
+                Page {currentPage} of {totalPages} ({filteredProducts.length} total products)
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="px-3 py-1.5 text-xs rounded bg-[#1a1a1a] border border-[#333] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#252525] transition-colors"
+                >
+                  ← Previous
+                </button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2)
+                    .map((page, idx, arr) => {
+                      const prevPage = arr[idx - 1];
+                      const showEllipsis = prevPage && page - prevPage > 1;
+                      return (
+                        <div key={page} className="flex items-center gap-1">
+                          {showEllipsis && <span className="text-gray-500 text-xs">...</span>}
+                          <button
+                            onClick={() => setCurrentPage(page)}
+                            className={`px-2.5 py-1 text-xs rounded border transition-colors ${
+                              currentPage === page
+                                ? "bg-red-600 border-red-600 text-white font-bold"
+                                : "bg-[#1a1a1a] border-[#333] text-gray-300 hover:bg-[#252525]"
+                            }`}
+                          >
+                            {page}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+                <button
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="px-3 py-1.5 text-xs rounded bg-[#1a1a1a] border border-[#333] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#252525] transition-colors"
+                >
+                  Next →
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
