@@ -303,8 +303,11 @@ button.outline:hover {
   }
 
   button.red,
-  button.outline {
+  button.outline,
+  .wishlist-detail-btn,
+  .share-detail-btn {
     width: 100%;
+    min-width: 0;
   }
 }
 

@@ -89,7 +89,7 @@ function FiltersInner({ brands, types, onClose, categories }: Props) {
         <button className="close-btn" onClick={onClose} aria-label="Close filters">✕</button>
       )}
 
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingRight: onClose ? "40px" : "0", marginBottom: "0.5rem" }}>
         <h3>FILTERS</h3>
         <button
           onClick={handleClearAll}

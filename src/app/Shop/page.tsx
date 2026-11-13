@@ -148,9 +148,9 @@ function ShopContent() {
         const pageParam = searchParams.get("page");
         const page = pageParam ? Math.max(1, parseInt(pageParam)) : 1;
 
-        // Determine page size based on screen size (10 for mobile/phone, 24 for desktop)
-        const isMobile = typeof window !== "undefined" ? window.innerWidth < 768 : false;
-        const pageSize = isMobile ? 10 : 24;
+        // Consistent page size of 24 items across both desktop and mobile
+        // (divisible by 1, 2, 3, and 4 grid columns)
+        const pageSize = 24;
 
         // Fetch products with filters
         const productsResult = await getProducts({ filters, page, pageSize });
@@ -171,14 +171,20 @@ function ShopContent() {
       }
     }
     fetchProducts();
-
-    const handleResize = () => {
-      fetchProducts();
-    };
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
+
+  // Prevent background scrolling when filter sidebar is open on mobile
+  useEffect(() => {
+    if (sidebarOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, [sidebarOpen]);
 
   const categoryQuery = searchParams.get("category") || "";
   const matchedCategory = categoryQuery
@@ -228,17 +234,18 @@ function ShopContent() {
     ? `${selectedCategoryName.toUpperCase()} COLLECTION`
     : "FIREARMS COLLECTION"}
 </h2>
-            {/* mobile-only circular filter button (neutral styling) */}
+            {/* mobile-only filter button */}
             <div className="sm:hidden">
               <button
                 onClick={() => setSidebarOpen(true)}
-                className="w-9 h-9 inline-flex items-center justify-center rounded-full bg-transparent border border-white/20 text-white hover:bg-white/10 focus:outline-none"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#1a1a1a] border border-white/20 text-xs font-medium text-white hover:bg-white/10 focus:outline-none cursor-pointer"
                 aria-label="Open filters"
                 title="Filters"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 4h18M7 12h10M10 20h4" />
                 </svg>
+                <span>Filters</span>
               </button>
             </div>
           </div>
@@ -451,38 +458,117 @@ function ShopContent() {
 
               {/* Pagination */}
               {filtersData.totalPages > 1 && (
-                <div className="pagination" style={{ display: "flex", justifyContent: "center", gap: "8px", marginTop: "24px" }}>
-                  {Array.from({ length: filtersData.totalPages }, (_, idx) => {
-                    const pageNum = idx + 1;
-                    const isCurrent = pageNum === filtersData.currentPage;
-                    return (
-                      <button
-                        key={pageNum}
-                        onClick={() => {
-                          const sp = new URLSearchParams(searchParams.toString());
-                          sp.set("page", pageNum.toString());
-                          router.push(`${pathname}?${sp.toString()}`);
-                        }}
-                        className={isCurrent ? "active" : ""}
-                        style={{
-                          minWidth: "36px",
-                          height: "36px",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          borderRadius: "4px",
-                          border: isCurrent ? "none" : "1px solid #333",
-                          backgroundColor: isCurrent ? "#dc2626" : "transparent",
-                          color: "#fff",
-                          cursor: "pointer",
-                          fontWeight: isCurrent ? "bold" : "normal",
-                          fontSize: "14px",
-                        }}
-                      >
-                        {pageNum}
-                      </button>
-                    );
-                  })}
+                <div className="pagination" style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", alignItems: "center", gap: "8px", marginTop: "28px" }}>
+                  {/* Prev button */}
+                  <button
+                    onClick={() => {
+                      if (filtersData.currentPage > 1) {
+                        const sp = new URLSearchParams(searchParams.toString());
+                        sp.set("page", (filtersData.currentPage - 1).toString());
+                        router.push(`${pathname}?${sp.toString()}`);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }}
+                    disabled={filtersData.currentPage <= 1}
+                    style={{
+                      padding: "0 12px",
+                      height: "36px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "4px",
+                      border: "1px solid #333",
+                      backgroundColor: "transparent",
+                      color: filtersData.currentPage <= 1 ? "#555" : "#fff",
+                      cursor: filtersData.currentPage <= 1 ? "not-allowed" : "pointer",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Prev
+                  </button>
+
+                  {/* Smart page numbers with ellipsis */}
+                  {(() => {
+                    const total = filtersData.totalPages;
+                    const current = filtersData.currentPage;
+                    const pages: (number | string)[] = [];
+                    if (total <= 5) {
+                      for (let i = 1; i <= total; i++) pages.push(i);
+                    } else {
+                      pages.push(1);
+                      if (current > 3) pages.push("ellipsis-1");
+                      const start = Math.max(2, current - 1);
+                      const end = Math.min(total - 1, current + 1);
+                      for (let i = start; i <= end; i++) {
+                        if (!pages.includes(i)) pages.push(i);
+                      }
+                      if (current < total - 2) pages.push("ellipsis-2");
+                      if (!pages.includes(total)) pages.push(total);
+                    }
+
+                    return pages.map((p, idx) => {
+                      if (typeof p === "string") {
+                        return <span key={`dots-${idx}`} style={{ color: "#777", padding: "0 4px" }}>...</span>;
+                      }
+                      const isCurrent = p === current;
+                      return (
+                        <button
+                          key={p}
+                          onClick={() => {
+                            const sp = new URLSearchParams(searchParams.toString());
+                            sp.set("page", p.toString());
+                            router.push(`${pathname}?${sp.toString()}`);
+                            window.scrollTo({ top: 0, behavior: "smooth" });
+                          }}
+                          className={isCurrent ? "active" : ""}
+                          style={{
+                            minWidth: "36px",
+                            height: "36px",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            borderRadius: "4px",
+                            border: isCurrent ? "none" : "1px solid #333",
+                            backgroundColor: isCurrent ? "#dc2626" : "transparent",
+                            color: "#fff",
+                            cursor: "pointer",
+                            fontWeight: isCurrent ? "bold" : "normal",
+                            fontSize: "14px",
+                          }}
+                        >
+                          {p}
+                        </button>
+                      );
+                    });
+                  })()}
+
+                  {/* Next button */}
+                  <button
+                    onClick={() => {
+                      if (filtersData.currentPage < filtersData.totalPages) {
+                        const sp = new URLSearchParams(searchParams.toString());
+                        sp.set("page", (filtersData.currentPage + 1).toString());
+                        router.push(`${pathname}?${sp.toString()}`);
+                        window.scrollTo({ top: 0, behavior: "smooth" });
+                      }
+                    }}
+                    disabled={filtersData.currentPage >= filtersData.totalPages}
+                    style={{
+                      padding: "0 12px",
+                      height: "36px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      borderRadius: "4px",
+                      border: "1px solid #333",
+                      backgroundColor: "transparent",
+                      color: filtersData.currentPage >= filtersData.totalPages ? "#555" : "#fff",
+                      cursor: filtersData.currentPage >= filtersData.totalPages ? "not-allowed" : "pointer",
+                      fontSize: "13px",
+                    }}
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </>

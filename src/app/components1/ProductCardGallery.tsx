@@ -67,7 +67,7 @@ export default function ProductCardGallery({
           <button
             onClick={handlePrev}
             type="button"
-            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-650 transition opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-600 transition opacity-90 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
             aria-label="Previous photo"
           >
             <FaChevronLeft className="w-2.5 h-2.5" />
@@ -75,7 +75,7 @@ export default function ProductCardGallery({
           <button
             onClick={handleNext}
             type="button"
-            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-650 transition opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-black/60 text-white flex items-center justify-center hover:bg-red-600 transition opacity-90 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
             aria-label="Next photo"
           >
             <FaChevronRight className="w-2.5 h-2.5" />

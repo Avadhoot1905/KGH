@@ -55,7 +55,7 @@ export default function ProductGallery({ photos, productName }: ProductGalleryPr
             <button
               onClick={handlePrev}
               type="button"
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
+              className="absolute left-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-600 transition opacity-90 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
               aria-label="Previous image"
             >
               <FaChevronLeft className="w-4 h-4" />
@@ -63,7 +63,7 @@ export default function ProductGallery({ photos, productName }: ProductGalleryPr
             <button
               onClick={handleNext}
               type="button"
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
+              className="absolute right-4 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-red-600 transition opacity-90 md:opacity-0 md:group-hover:opacity-100 focus:opacity-100 focus:outline-none border border-white/10 z-10 cursor-pointer"
               aria-label="Next image"
             >
               <FaChevronRight className="w-4 h-4" />

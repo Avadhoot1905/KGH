@@ -42,7 +42,8 @@ export default function ConditionalFeedbackButton() {
 
   return (
     <>
-      {!isModPage && isAuth && <FeedbackButton />}
+      {/* Floating feedback/complaint button - commented out to prevent overlapping navigation arrows; kept intact for future reuse */}
+      {/* {!isModPage && isAuth && <FeedbackButton />} */}
 
       {!isHomePage && (
         <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-2.5 pointer-events-auto">

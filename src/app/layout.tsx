@@ -173,7 +173,8 @@ export default function RootLayout({
         <NextAuthProvider>
           {children}
           <ClientAuthPopup />
-          <ConditionalAppointmentButton />
+          {/* Floating appointment button - commented out to avoid overlapping navigation arrow; code kept for reuse */}
+          {/* <ConditionalAppointmentButton /> */}
           <ConditionalFeedbackButton />
         </NextAuthProvider>
       </body>

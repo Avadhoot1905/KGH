@@ -160,6 +160,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
               paddingTop: 6,
               paddingBottom: 6,
               borderRadius: 4,
+              fontSize: 16,
             }}
           />
         )}
@@ -210,7 +211,7 @@ export default function SearchBar({ className, inputClassName, placeholder = "Se
             border: "1px solid #333",
             background: "#1a1a1a",
             color: "#fff",
-            fontSize: 14,
+            fontSize: 16,
             outline: "none",
             transition: "border-color 0.2s",
           }}

@@ -22,5 +22,7 @@ export default function ConditionalAppointmentButton() {
     return null; // Hide if not authenticated
   }
 
-  return <AppointmentButton />;
+  // Commented out to avoid overlapping with navigation arrows; kept intact for future reuse
+  // return <AppointmentButton />;
+  return null;
 }
